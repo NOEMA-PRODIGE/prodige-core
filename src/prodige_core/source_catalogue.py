@@ -47,13 +47,66 @@ def load_sources_table():
 # regions dictionary storing the region name, the central RA and DEC (FK5), and
 # the size of the region (height and width wiht units)
 # these are supposed to be used for plotting purposes
+fig_width_def = 6.0
+fig_height_def = 6.0
+width_def = 23.0 * u.arcsec
+height_def = 23.0 * u.arcsec
+
+source_id = ['SVS13A',
+             'HH211', 'IC348MMS', 'IRAS4C', 'IRAS2A', 'IRAS2B', 'SVS13B', 'IRAS4B',
+             'L1448NW']
+
 region_dic = {
+    # these are the name of the mosaicked regions
     'L1448N': {'RA0': '3:25:36.44', 'Dec0': '30:45:18.3',
                'height': 33*u.arcsec, 'width': 30*u.arcsec,
-               'fig_width': 6, 'fig_height': 6},
-    'B5-IRS1': {'RA0': '3:25:36.44', 'Dec0': '30:45:18.3',
-                'height': 33*u.arcsec, 'width': 30*u.arcsec,
-                'fig_width': 6, 'fig_height': 6},
+               'fig_width': fig_width_def, 'fig_height': fig_height_def},
+    # The following sources are the original pointings
+    'B5-IRS1': {'RA0': '03:47:41.591', 'Dec0': '32:51:43.672',
+                'height': height_def, 'width': width_def,
+                'fig_width': fig_width_def, 'fig_height': fig_height_def},
+    'L1448IRS3A': {'RA0': '03:25:36.499', 'Dec0': '30:45:21.880',
+                   'height': height_def, 'width': width_def,
+                   'fig_width': fig_width_def, 'fig_height': fig_height_def},
+    'L1448-IRS3B': {'RA0': '03:25:36.379', 'Dec0': '30:45:14.728',
+                    'height': height_def, 'width': width_def,
+                    'fig_width': fig_width_def, 'fig_height': fig_height_def},
+    'L1448C': {'RA0': '03:25:38.875', 'Dec0': '30:44:05.283',
+               'height': height_def, 'width': width_def,
+               'fig_width': fig_width_def, 'fig_height': fig_height_def},
+    'Per-emb-2': {'RA0': '03:32:17.928', 'Dec0': '30:49:47.825',
+                  'height': height_def, 'width': width_def,
+                  'fig_width': fig_width_def, 'fig_height': fig_height_def},
+    'Per-emb-5': {'RA0': '03:31:20.939', 'Dec0': '30:45:30.273',
+                  'height': height_def, 'width': width_def,
+                  'fig_width': fig_width_def, 'fig_height': fig_height_def},
+    'Per-emb-8': {'RA0': '03:44:43.982', 'Dec0': '32:01:35.210',
+                  'height': height_def, 'width': width_def,
+                  'fig_width': fig_width_def, 'fig_height': fig_height_def},
+    'Per-emb-18': {'RA0': '03:29:11.258', 'Dec0': '31:18:31.073',
+                   'height': height_def, 'width': width_def,
+                   'fig_width': fig_width_def, 'fig_height': fig_height_def},
+    'Per-emb-22': {'RA0': '03:25:22.409', 'Dec0': '30:45:13.258',
+                   'height': height_def, 'width': width_def,
+                   'fig_width': fig_width_def, 'fig_height': fig_height_def},
+    'Per-emb-29': {'RA0': '03:33:17.877', 'Dec0': '31:09:31.817',
+                   'height': height_def, 'width': width_def,
+                   'fig_width': fig_width_def, 'fig_height': fig_height_def},
+    'Per-emb-30': {'RA0': '03:33:27.303', 'Dec0': '31:07:10.160',
+                   'height': height_def, 'width': width_def,
+                   'fig_width': fig_width_def, 'fig_height': fig_height_def},
+    'Per-emb-50': {'RA0': '03:29:07.768', 'Dec0': '31:21:57.128',
+                   'height': height_def, 'width': width_def,
+                   'fig_width': fig_width_def, 'fig_height': fig_height_def},
+    'Per-emb-62': {'RA0': '03:44:12.977', 'Dec0': '32:01:35.419',
+                   'height': height_def, 'width': width_def,
+                   'fig_width': fig_width_def, 'fig_height': fig_height_def},
+    'B1-bN': {'RA0': '03:33:21.209', 'Dec0': '31:07:43.665',
+              'height': height_def, 'width': width_def,
+              'fig_width': fig_width_def, 'fig_height': fig_height_def},
+    'B1-bS': {'RA0': '03:33:21.355', 'Dec0': '31:07:26.372',
+              'height': height_def, 'width': width_def,
+              'fig_width': fig_width_def, 'fig_height': fig_height_def},
 }
 
 

@@ -1,6 +1,6 @@
 import numpy as np
 
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, SkyOffsetFrame
 from astropy import units as u
 from astropy.io import fits
 from astropy.wcs import WCS
@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Arrow
 from matplotlib.ticker import MultipleLocator
 from matplotlib import ticker
+import matplotlib.patheffects as PathEffects
+
 # from matplotlib.patches import Ellipse, Rectangle
 
 from astropy.stats import sigma_clipped_stats
@@ -102,7 +104,7 @@ def prodige_style(ax):
     RA.set_minor_frequency(5)
 
 
-def plot_continuum(region, bb, data_directory, cmap=None, color_nan='0.1', do_marker=False):
+def plot_continuum(region, bb, data_directory, cmap=None, color_nan='0.1', do_marker=False, do_outflow=False):
     # plot continuum in color and contours, add source names, add outflow directions
 
     if cmap == None:
@@ -141,15 +143,16 @@ def plot_continuum(region, bb, data_directory, cmap=None, color_nan='0.1', do_ma
 
     # annotate source names
     ax.autoscale(enable=False)
-    annotate_sources(ax, wcs_cont, color='white',
+    annotate_sources(ax, wcs_cont, color='white', color_back='black',
                      fontsize=10, marker=do_marker)
 
     # add outflow orientations
-    # annotate_outflow(ax, wcs_cont, width=2.0)
+    if do_outflow:
+        annotate_outflow(ax, wcs_cont, width=2.0)
     prodige_style(ax)
     # add colorbar
     cb = fig.colorbar(im, pad=0.0, shrink=0.855)
-    cb.set_label(r'$I_{' + str(wavelength) +
+    cb.set_label(r'$I_{' + str(wavelength.value) +
                  '\mathrm{mm}}$ (mJy\,beam$^{-1}$)')
     cb.ax.yaxis.set_tick_params(
         color='black', labelcolor='black', direction='out')
@@ -169,7 +172,7 @@ def plot_continuum(region, bb, data_directory, cmap=None, color_nan='0.1', do_ma
                 format='pdf', bbox_inches='tight', pad_inches=0.01)
 
 
-def annotate_sources(ax, wcs, color='cornflowerblue', marker=False, label=True, fontsize=10):
+def annotate_sources(ax, wcs, color='cornflowerblue', color_back='black', marker=False, label=True, fontsize=10):
     # annotate mm sources
 
     # load table containing sources within the region
@@ -181,8 +184,10 @@ def annotate_sources(ax, wcs, color='cornflowerblue', marker=False, label=True, 
         c = SkyCoord(sources_RA[k] + ' ' +
                      sources_Dec[k], unit=(u.hourangle, u.deg))
 
+        # Check if source is within the field of view
         sources_RA_pix, sources_Dec_pix = wcs.wcs_world2pix(c.ra, c.dec, 0)
-
+        if wcs.footprint_contains(c) == False:
+            continue
         if (sources_name[k] == 'IRS3A'):
             off_x, off_y = -30, 0
         elif (sources_name[k] == 'IRS3B'):
@@ -196,54 +201,54 @@ def annotate_sources(ax, wcs, color='cornflowerblue', marker=False, label=True, 
 
         if marker == True:
             ax.scatter(c.ra, c.dec, marker='*', c=color, edgecolor='black', linewidth=0.5, s=20,
-                       transform=ax.get_transform('world'))
+                       transform=ax.get_transform('world'), zorder=40)
 
         if label == True:
-            ax.annotate(r'\textbf{'+str(sources_name[k])+r'}', xy=(sources_RA_pix, sources_Dec_pix), xytext=(sources_RA_pix+off_x, sources_Dec_pix+off_y), xycoords='data',
-                        arrowprops=dict(color='white', arrowstyle='-', linestyle='-',
-                                        linewidth=0.0, alpha=0.7, shrinkA=0, shrinkB=0),
-                        color=color, fontsize=fontsize, ha='center', va='center', alpha=1.0, zorder=5)
+            arrow = ax.annotate(r'\textbf{'+str(sources_name[k])+r'}',
+                                xy=(sources_RA_pix, sources_Dec_pix), xytext=(sources_RA_pix+off_x, sources_Dec_pix+off_y), xycoords='data',
+                                arrowprops=dict(color=label_col, arrowstyle='-', linestyle='-',
+                                                linewidth=1.0, alpha=0.7, shrinkA=0, shrinkB=0),
+                                color=color, fontsize=fontsize, ha='center', va='center', alpha=1.0, zorder=5)
+            arrow.set_path_effects(
+                [PathEffects.withStroke(linewidth=1.0, foreground=color_back)])
 
 
-def annotate_outflow(ax, wcs, width=5.0):
+def annotate_outflow(ax, wcs, width=1.0, arrow_length=3*u.arcsec, arrow_offset=0.05*u.arcsec):
     # add outflow orientation angle
-
+    default_width = 0.000025
+    default_head_width = 0.000075
     # load table containing sources within the region
-    sources_name, sources_RA, sources_Dec, sources_color, sources_vlsr, sources_outflowPA = load_sources_table()
-
+    sources_name, sources_RA, sources_Dec, _, _, sources_outflowPA = load_sources_table()
     # loop over all cores
     for k in range(sources_name.size):
-
         # source coordinate
         c = SkyCoord(sources_RA[k] + ' ' +
                      sources_Dec[k], unit=(u.hourangle, u.deg))
-
-        # converte coordinate to pixels
-        sources_RA_pix, sources_Dec_pix = wcs.wcs_world2pix(c.ra, c.dec, 0)
-
-        # length and start of arrow
-        if sources_name[k] == 'IRS3A':
-            arrow_length = 12.5  # pixel
-            arrow_start = 0.4  # %
-        elif sources_name[k] == 'IRS3B':
-            arrow_length = 20.0  # pixel
-            arrow_start = 0.4  # %
-        elif sources_name[k] == 'IRS3C':
-            arrow_length = 30.0  # pixel
-            arrow_start = 0.1  # %
-        elif sources_name[k] == 'mm':
-            arrow_length = 410.0  # pixel
-            arrow_start = 0.1  # %
-        else:
-            print('error')
-
+        # check if source is within the field of view
+        if wcs.footprint_contains(c) == False:
+            continue
         # minus because angle is defined counter clockwise
-        dx = -1.0*np.sin(sources_outflowPA[k]
-                         * np.pi/180.0)*arrow_length  # pixel
-        dy = np.cos(sources_outflowPA[k]*np.pi/180.0)*arrow_length  # pixel
-
+        c_blue_start = c.directional_offset_by(
+            sources_outflowPA[k]*u.deg, arrow_offset)
+        c_blue_end = c.directional_offset_by(
+            sources_outflowPA[k]*u.deg, arrow_length)
+        c_red_start = c.directional_offset_by(
+            (180+sources_outflowPA[k])*u.deg, arrow_offset)
+        c_red_end = c.directional_offset_by(
+            (180+sources_outflowPA[k])*u.deg, arrow_length)
+        # calculate the offset for the arrows
+        dx_blue = c_blue_end.ra.degree - c_blue_start.ra.degree
+        dy_blue = c_blue_end.dec.degree - c_blue_start.dec.degree
+        dx_red = c_red_end.ra.degree - c_red_start.ra.degree
+        dy_red = c_red_end.dec.degree - c_red_start.dec.degree
         # add blue and redshifted arrow
-        plt.arrow(sources_RA_pix+arrow_start*dx, sources_Dec_pix+arrow_start*dy, dx, dy, lw=0.2,
-                  fc='dodgerblue', ec='k', width=width, zorder=1, head_width=2.0*width, alpha=0.7)
-        plt.arrow(sources_RA_pix-arrow_start*dx, sources_Dec_pix-arrow_start*dy, -1.0*dx, -1.0*dy,
-                  lw=0.2, fc='crimson', ec='k', width=width, zorder=1, head_width=2.0*width, alpha=0.7)
+        plt.arrow(c_blue_start.ra.degree, c_blue_start.dec.degree,
+                  dx_blue, dy_blue, lw=1, fc='dodgerblue', ec='k',
+                  width=default_width*width,
+                  head_width=default_head_width*width, alpha=0.7,
+                  transform=ax.get_transform('fk5'), zorder=20)
+        plt.arrow(c_red_start.ra.degree, c_red_start.dec.degree,
+                  dx_red, dy_red, lw=1, fc='crimson', ec='k',
+                  width=default_width*width,
+                  head_width=default_head_width*width, alpha=0.7,
+                  transform=ax.get_transform('fk5'), zorder=21)
