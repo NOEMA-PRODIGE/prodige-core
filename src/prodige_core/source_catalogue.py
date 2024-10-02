@@ -24,10 +24,7 @@ def load_sources_table():
     # load table containing sources within FoV
     # sources within FOV
     data_file = files('prodige_core').joinpath(source_filename)
-    # data_file = files('prodige_core').joinpath('sources.dat')  # .read_text()
-    # sources_tab = np.loadtxt('sources.dat',dtype='U')
-    sources_tab = np.loadtxt(data_file, dtype='U')
-
+    sources_tab = np.loadtxt(data_file, dtype='U', comments='#')
     # source name
     name_list = sources_tab[:, 0]
     # source RA
@@ -40,8 +37,10 @@ def load_sources_table():
     vlsr_list = sources_tab[:, 4].astype(float)
     # source outflow PA
     outflowPA = sources_tab[:, 5].astype(float)
+    # label offset PA
+    label_offsetPA = sources_tab[:, 6].astype(float)
 
-    return name_list, RA_list, Dec_list, color_list, vlsr_list, outflowPA
+    return name_list, RA_list, Dec_list, color_list, vlsr_list, outflowPA, label_offsetPA
 
 
 # regions dictionary storing the region name, the central RA and DEC (FK5), and
@@ -49,8 +48,8 @@ def load_sources_table():
 # these are supposed to be used for plotting purposes
 fig_width_def = 6.0
 fig_height_def = 6.0
-width_def = 23.0 * u.arcsec
-height_def = 23.0 * u.arcsec
+width_def = 40.0 * u.arcsec
+height_def = 40.0 * u.arcsec
 
 source_id = ['SVS13A',
              'HH211', 'IC348MMS', 'IRAS4C', 'IRAS2A', 'IRAS2B', 'SVS13B', 'IRAS4B',
@@ -166,3 +165,17 @@ def get_figsize(source):
         fig_width = region_dic[source]['fig_width']
         fig_height = region_dic[source]['fig_height']
     return fig_width, fig_height
+
+
+def get_region_center(source):
+    """
+    Convenience function to get the region center for a given source.
+    """
+    if source not in region_dic.keys():
+        raise ValueError('Source not in region dictionary')
+    else:
+        position = SkyCoord(region_dic[source]['RA0'] + ' ' +
+                            region_dic[source]['Dec0'], unit=(u.hourangle, u.deg))
+        ra0 = position.ra.deg
+        dec0 = position.dec.deg
+    return ra0, dec0
