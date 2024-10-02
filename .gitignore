@@ -83,3 +83,7 @@ venv.bak/
 # IDE
 .idea
 .backup
+
+# MacOSX
+**/.DS_Store
+.DS_Store
