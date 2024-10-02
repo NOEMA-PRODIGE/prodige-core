@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools >= 64", "setuptools-scm >= 8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prodige_core"
+dependencies = [
+  "astropy>=5.0",
+]
+requires-python = ">=3.7"
+authors = [
+  {name = "Jaime E. Pineda", email = "jpineda@mpe.mpg.de"},
+  {name = "Caroline Gieser"},
+]
+maintainers = [
+  {name = "Jaime E. Pineda", email = "jpineda@mpe.mpg.de"},
+]
+description = "Package to be used in PRODIGE analysis or publications."
+readme = "README.md"
+license = {text = "MIT License"}
+
+dynamic = ["version"]
+
+[tool.setuptools_scm]
+
+[tool.setuptools]
+include-package-data = true
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+# include = ["PRODIGE-core*"]
+# exclude = ["PRODIGE-core._dev*"]
+namespaces = false
+
+[project.urls]
+Homepage = "https://github.com/NOEMA-PRODIGE/prodige-core"
