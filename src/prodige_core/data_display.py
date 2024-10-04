@@ -30,7 +30,7 @@ label_col_back = 'white'
 # distance = 288.0  # pc
 
 
-def determine_noise_map(data_2d):
+def determine_noise_map(data_2d: np.ndarray) -> float:
     """
     Determine the noise in the continuum data.
     """
@@ -41,7 +41,7 @@ def determine_noise_map(data_2d):
     return noise_2dmap
 
 
-def get_contour_params(maximum, noise):
+def get_contour_params(maximum: float, noise: float) -> tuple:
     """
     Compute the contour levels for the continuum data.
     maximum: maximum value to be shown in the plot
@@ -58,7 +58,8 @@ def get_contour_params(maximum, noise):
     return steps_arr, line_styles
 
 
-def load_continuum_data(data_directory, region, bb, mosaic=False):
+def load_continuum_data(data_directory: str, region: str, 
+                        bb: str, mosaic: bool=False) -> tuple:
     """
     Function to load the continuum data and return the cutout specified in the dictionary.
     It return the data, estimated noise, and the FITS header.
@@ -93,7 +94,7 @@ def load_continuum_data(data_directory, region, bb, mosaic=False):
     return data_cont, noise_cont, header
 
 
-def get_frequency(header):
+def get_frequency(header: fits.header.Header) -> float:
     """
     Function to get the frequency from the header and convert it to GHz.
     Parameters:
@@ -106,7 +107,7 @@ def get_frequency(header):
     return restfreq * 1e-9
 
 
-def get_wavelength(header):
+def get_wavelength(header: fits.header.Header) -> float:
     """
     Function to get the wavelength from the header.
     Parameters:
@@ -120,7 +121,7 @@ def get_wavelength(header):
     return np.around(wavelength, decimals=1)  # mm
 
 
-def prodige_style(ax):
+def prodige_style(ax: plt.Axes) -> None:
     """
     Setting a common style for the plots. This includes axis labels, tick labels, and minor ticks.
     Pararameters:
@@ -143,9 +144,11 @@ def prodige_style(ax):
     RA.set_minor_frequency(5)
 
 
-def annotate_sources(ax, wcs, color='cornflowerblue', color_back='black',
-                     marker=False, label=True, connect_line=False,
-                     fontsize=10, label_offset=1.0*u.arcsec):
+def annotate_sources(ax: plt.Axes, wcs: WCS.wcs, 
+                     color: str ='cornflowerblue', color_back: str ='black',
+                     marker: bool=False, label: bool=True, 
+                     connect_line: bool=False,
+                     fontsize: int=10, label_offset=1.0*u.arcsec) -> None:
     """
     Convenience function to annotate sources in the field of view.
     Parameters:
@@ -199,15 +202,14 @@ def annotate_sources(ax, wcs, color='cornflowerblue', color_back='black',
                     transform=ax.get_transform('world'))
 
 
-def annotate_outflow(ax, wcs, width=1.0,
-                     arrow_length=3*u.arcsec, arrow_offset=0.05*u.arcsec,
-                     label_offset=1.0*u.arcsec):
+def annotate_outflow(ax, wcs, arrow_width=1.0,
+                     arrow_length=3*u.arcsec, arrow_offset=0.05*u.arcsec):
     """
     Function to add outflow orientations to the plot.
     Parameters:
     ax: axis object
     wcs: WCS object
-    width: width of the arrows
+    arrow_width: width of the arrows
     arrow_length: length of the arrows
     arrow_offset: offset of the arrows
     """
@@ -241,13 +243,13 @@ def annotate_outflow(ax, wcs, width=1.0,
         # add blue and redshifted arrow
         plt.arrow(c_blue_start.ra.degree, c_blue_start.dec.degree,
                   dx_blue, dy_blue, lw=1, fc='dodgerblue', ec='k',
-                  width=default_width*width,
-                  head_width=default_head_width*width, alpha=0.7,
+                  width=default_width*arrow_width,
+                  head_width=default_head_width*arrow_width, alpha=0.7,
                   transform=ax.get_transform('fk5'), zorder=20)
         plt.arrow(c_red_start.ra.degree, c_red_start.dec.degree,
                   dx_red, dy_red, lw=1, fc='crimson', ec='k',
-                  width=default_width*width,
-                  head_width=default_head_width*width, alpha=0.7,
+                  width=default_width*arrow_width,
+                  head_width=default_head_width*arrow_width, alpha=0.7,
                   transform=ax.get_transform('fk5'), zorder=21)
 
 
