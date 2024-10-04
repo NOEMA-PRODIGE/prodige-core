@@ -4,20 +4,14 @@ from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astropy.io import fits
 from astropy.wcs import WCS
-from astropy.visualization.wcsaxes import add_beam, add_scalebar
-
-
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MultipleLocator
-from matplotlib import ticker
-import matplotlib.patheffects as PathEffects
-from astropy.visualization.wcsaxes import SphericalCircle
-
-
+from astropy.visualization.wcsaxes import SphericalCircle, add_beam, add_scalebar
 from astropy.stats import sigma_clipped_stats
 
+import matplotlib.pyplot as plt
+from matplotlib import ticker
+import matplotlib.patheffects as PathEffects
+
 from .source_catalogue import load_sources_table, load_cutout, get_figsize, get_region_center, get_outflow_information
-# from .source_catalogue import distance
 
 from .config import pyplot_params, distance, cmap_default
 
