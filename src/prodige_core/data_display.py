@@ -1,6 +1,6 @@
 import numpy as np
 
-from astropy.coordinates import SkyCoord, SkyOffsetFrame
+from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astropy.io import fits
 from astropy.wcs import WCS
@@ -8,7 +8,6 @@ from astropy.visualization.wcsaxes import add_beam, add_scalebar
 
 
 import matplotlib.pyplot as plt
-# from matplotlib.patches import Arrow
 from matplotlib.ticker import MultipleLocator
 from matplotlib import ticker
 import matplotlib.patheffects as PathEffects
@@ -17,17 +16,14 @@ from astropy.visualization.wcsaxes import SphericalCircle
 
 from astropy.stats import sigma_clipped_stats
 
-from .source_catalogue import load_sources_table, load_cutout, get_figsize, get_region_center
-from .source_catalogue import region_dic, distance
+from .source_catalogue import load_sources_table, load_cutout, get_figsize, get_region_center, get_outflow_information
+# from .source_catalogue import distance
 
 from .config import pyplot_params, distance, cmap_default
+
 # name of the region
-# region = 'L1448N'
 label_col = 'black'
 label_col_back = 'white'
-
-# distance to the region
-# distance = 288.0  # pc
 
 
 def determine_noise_map(data_2d: np.ndarray) -> float:
@@ -41,7 +37,7 @@ def determine_noise_map(data_2d: np.ndarray) -> float:
     return noise_2dmap
 
 
-def get_contour_params(maximum: float, noise: float) -> tuple:
+def get_contour_params(maximum: float, noise: float) -> tuple[float, float]:
     """
     Compute the contour levels for the continuum data.
     maximum: maximum value to be shown in the plot
@@ -58,31 +54,41 @@ def get_contour_params(maximum: float, noise: float) -> tuple:
     return steps_arr, line_styles
 
 
-def load_continuum_data(data_directory: str, region: str, 
-                        bb: str, mosaic: bool=False) -> tuple:
-    """
-    Function to load the continuum data and return the cutout specified in the dictionary.
-    It return the data, estimated noise, and the FITS header.
+def filename_continuum(region: str, bb: str, mosaic: bool = False) -> str:
+    """ Function to return the filename of the continuum data.
+    It follows the naming convention of PRODIGE.
     Parameters:
-    data_directory: directory where the data is stored
     region: name of the region
     bb: baseband of the data (lo, li, ui, uo)
     mosaic: if True, mosaic data is used. This changes the filename format of the data.
-
-    Returns:
-    data_cont: continuum data in mJy/beam
-    noise_cont: estimated noise in the continuum data
     """
     if mosaic:
         datafile = region + '_CD_' + bb + '_cont_rob1-selfcal.fits'
     else:
         datafile = region + '_CD_' + bb + '_cont_rob1-selfcal-pbcor.fits'
+    return datafile
+
+
+def load_continuum_data(datafile: str, region: str,
+                        ) -> tuple[np.ndarray, float, fits.header.Header]:
+    """
+    Function to load the continuum data and return the cutout specified in the dictionary.
+    It return the data, estimated noise, and the FITS header.
+    Parameters:
+    datafile: fileneame of the data to load
+    region: name of the region
+
+    Returns:
+    data_cont: continuum data in mJy/beam
+    noise_cont: estimated noise in the continuum data
+    """
+
     # loads the cutout of the region. It uses the region dictionary to set the cutout size.
-    hdu_cont = load_cutout(data_directory + datafile,
+    hdu_cont = load_cutout(datafile,
                            source=region, is_hdu=False)
+    # set empty pixels (0.0) to NaN
+    hdu_cont.data[hdu_cont.data == 0.0] = np.nan
     # Update the header with the updated WCS from the cutout, as well as the data in mJy/beam.
-    if mosaic == False:
-        hdu_cont.data[hdu_cont.data == 0.0] = np.nan
     header = hdu_cont.header
     if header['BUNIT'].casefold() == 'JY/BEAM'.casefold():
         data_cont = np.squeeze(hdu_cont.data) * 1000.0
@@ -144,11 +150,13 @@ def prodige_style(ax: plt.Axes) -> None:
     RA.set_minor_frequency(5)
 
 
-def annotate_sources(ax: plt.Axes, wcs: WCS.wcs, 
-                     color: str ='cornflowerblue', color_back: str ='black',
-                     marker: bool=False, label: bool=True, 
-                     connect_line: bool=False,
-                     fontsize: int=10, label_offset=1.0*u.arcsec) -> None:
+def annotate_sources(ax: plt.Axes, wcs: WCS.wcs,
+                     color: str = 'cornflowerblue', color_back: str = 'black',
+                     marker: bool = False, label: bool = True,
+                     connect_line: bool = False,
+                     fontsize: int = 10,
+                     label_offset: u.Quantity = 1.0*u.arcsec
+                     ) -> None:
     """
     Convenience function to annotate sources in the field of view.
     Parameters:
@@ -165,9 +173,10 @@ def annotate_sources(ax: plt.Axes, wcs: WCS.wcs,
     # load table containing sources within the region
     sources_name, sources_RA, sources_Dec, _, _, _, label_offsetPA = load_sources_table()
     # loop over all labels
-    for k in range(sources_name.size):
-        c = SkyCoord(sources_RA[k] + ' ' +
-                     sources_Dec[k], unit=(u.hourangle, u.deg))
+    for source_i, RA_i, Dec_i, offset_PA_i in zip(sources_name, sources_RA, sources_Dec, label_offsetPA):
+        # for k in range(sources_name.size):
+        c = SkyCoord(RA_i + ' ' + Dec_i, unit=(u.hourangle, u.deg))
+        #  sources_Dec[k], unit=(u.hourangle, u.deg))
         # Check if source is within the field of view
         if wcs.footprint_contains(c) == False:
             continue
@@ -177,10 +186,10 @@ def annotate_sources(ax: plt.Axes, wcs: WCS.wcs,
 
         if label == True:
             c_label = c.directional_offset_by(
-                label_offsetPA[k]*u.deg, label_offset)
+                offset_PA_i*u.deg, label_offset)
             label_text = ax.text(
                 c_label.ra.degree, c_label.dec.degree,
-                r'\textbf{'+str(sources_name[k])+r'}',
+                r'\textbf{'+str(source_i)+r'}',
                 transform=ax.get_transform('world'),
                 color=color, fontsize=fontsize,
                 verticalalignment='center', horizontalalignment='center')
@@ -189,9 +198,9 @@ def annotate_sources(ax: plt.Axes, wcs: WCS.wcs,
 
         if connect_line == True:
             c_line_start = c.directional_offset_by(
-                label_offsetPA[k]*u.deg, 0.2 * label_offset)
+                offset_PA_i*u.deg, 0.2 * label_offset)
             c_line_end = c.directional_offset_by(
-                label_offsetPA[k]*u.deg, 0.5 * label_offset)
+                offset_PA_i*u.deg, 0.5 * label_offset)
             ax.plot([c_line_start.ra.degree, c_line_end.ra.degree],
                     [c_line_start.dec.degree, c_line_end.dec.degree],
                     color=color_back, lw=1.5, alpha=0.7, zorder=10,
@@ -202,8 +211,9 @@ def annotate_sources(ax: plt.Axes, wcs: WCS.wcs,
                     transform=ax.get_transform('world'))
 
 
-def annotate_outflow(ax, wcs, arrow_width=1.0,
-                     arrow_length=3*u.arcsec, arrow_offset=0.05*u.arcsec):
+def annotate_outflow(ax: plt.Axes, wcs: WCS.wcs, arrow_width: float = 1.0,
+                     arrow_length: u.Quantity = 3*u.arcsec,
+                     arrow_offset: u.Quantity = 0.05*u.arcsec) -> None:
     """
     Function to add outflow orientations to the plot.
     Parameters:
@@ -217,24 +227,25 @@ def annotate_outflow(ax, wcs, arrow_width=1.0,
     default_width = 0.000025
     default_head_width = 0.000075
     # load table containing sources within the region
-    sources_name, sources_RA, sources_Dec, _, _, sources_outflowPA, label_offsetPA = load_sources_table()
+    _, sources_RA, sources_Dec, sources_outflowPA, _ = get_outflow_information()
     # loop over all cores
-    for k in range(sources_name.size):
+    for RA_i, Dec_i, source_outflowPA_i in zip(sources_RA, sources_Dec, sources_outflowPA):
+        # for k in range(sources_name.size):
         # source coordinate
-        c = SkyCoord(sources_RA[k] + ' ' +
-                     sources_Dec[k], unit=(u.hourangle, u.deg))
+        c = SkyCoord(RA_i + ' ' + Dec_i, unit=(u.hourangle, u.deg))
+        #  sources_Dec[k], unit=(u.hourangle, u.deg))
         # check if source is within the field of view
         if wcs.footprint_contains(c) == False:
             continue
         # minus because angle is defined counter clockwise
         c_blue_start = c.directional_offset_by(
-            sources_outflowPA[k]*u.deg, arrow_offset)
+            source_outflowPA_i*u.deg, arrow_offset)
         c_blue_end = c.directional_offset_by(
-            sources_outflowPA[k]*u.deg, arrow_length)
+            source_outflowPA_i*u.deg, arrow_length)
         c_red_start = c.directional_offset_by(
-            (180+sources_outflowPA[k])*u.deg, arrow_offset)
+            (180+source_outflowPA_i)*u.deg, arrow_offset)
         c_red_end = c.directional_offset_by(
-            (180+sources_outflowPA[k])*u.deg, arrow_length)
+            (180+source_outflowPA_i)*u.deg, arrow_length)
         # calculate the offset for the arrows
         dx_blue = c_blue_end.ra.degree - c_blue_start.ra.degree
         dy_blue = c_blue_end.dec.degree - c_blue_start.dec.degree
@@ -253,7 +264,7 @@ def annotate_outflow(ax, wcs, arrow_width=1.0,
                   transform=ax.get_transform('fk5'), zorder=21)
 
 
-def pb_telecope(frequency, telescope='NOEMA'):
+def pb_telecope(frequency: float, telescope: str = 'NOEMA') -> u.Quantity:
     """
     Function to compute the primary beam of the NOEMA telescope.
     Parameters:
@@ -278,8 +289,11 @@ def pb_telecope(frequency, telescope='NOEMA'):
     return pb.to(u.degree)
 
 
-def plot_continuum(region, bb, data_directory, cmap=None, color_nan='0.1', mosaic=False,
-                   do_marker=False, do_outflow=False, do_annotation=True):
+def plot_continuum(region: str, bb: str, data_directory: str,
+                   cmap: str | None = None, color_nan: str = '0.1',
+                   mosaic: bool = False,
+                   do_marker: bool = False,
+                   do_outflow: bool = False, do_annotation: bool = True) -> None:
     """
     Function to plot the continuum data with the sources and outflow orientations.
     Labels and annotations are added to the plot.
@@ -310,8 +324,9 @@ def plot_continuum(region, bb, data_directory, cmap=None, color_nan='0.1', mosai
     fig_width, fig_height = get_figsize(region)
     ra0, dec0 = get_region_center(region)
     # load continuum data
+    file_name = filename_continuum(region, bb, mosaic)
     data_cont, noise_cont, hd_cont = load_continuum_data(
-        data_directory, region, bb, mosaic=mosaic)
+        data_directory + file_name, region)
 
     wavelength = get_wavelength(hd_cont)
     wcs_cont = WCS(hd_cont)
@@ -354,7 +369,7 @@ def plot_continuum(region, bb, data_directory, cmap=None, color_nan='0.1', mosai
 
     # add outflow orientations
     if do_outflow:
-        annotate_outflow(ax, wcs_cont, width=2.0)
+        annotate_outflow(ax, wcs_cont, arrow_width=2.0)
     prodige_style(ax)
     # Get coordinates for colorbar
     cax = fig.add_axes([ax.get_position().x1 + 0.005,
@@ -366,7 +381,9 @@ def plot_continuum(region, bb, data_directory, cmap=None, color_nan='0.1', mosai
                  '\mathrm{mm}}$ (mJy\,beam$^{-1}$)')
     cb.ax.yaxis.set_tick_params(
         color='black', labelcolor='black', direction='out')
-    cb.locator = MultipleLocator(10.0)
+    cb.ax.locator_params(nbins=5)
+
+    # cb.locator = MultipleLocator(10.0)
     cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.0f}"))
     # add linear scale bar (1000 au)
     length = (1e3*u.au / (distance*u.pc)).to(u.deg, u.dimensionless_angles())
@@ -378,3 +395,4 @@ def plot_continuum(region, bb, data_directory, cmap=None, color_nan='0.1', mosai
     # save plot
     plt.savefig('continuum_' + region + '_' + bb + '.pdf',
                 format='pdf', bbox_inches='tight', pad_inches=0.01)
+    plt.close()

@@ -8,15 +8,11 @@ from astropy.io import fits
 from astropy.wcs import WCS
 
 from importlib.resources import files
-from .config import source_filename, distance
-
-# name of the region
-# region = 'L1448N'
-# distance to the region
-# distance = 288.0  # pc
+from .config import source_filename
 
 
-def load_sources_table():
+def load_sources_table(
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Load the source table containing the sources within the field of view.
     It uses the source_filename variable from the config.py file.
@@ -24,7 +20,7 @@ def load_sources_table():
     # load table containing sources within FoV
     # sources within FOV
     data_file = files('prodige_core').joinpath(source_filename)
-    sources_tab = np.loadtxt(data_file, dtype='U', comments='#')
+    sources_tab = np.loadtxt(data_file, dtype='U', delimiter=',', comments='#')
     # source name
     name_list = sources_tab[:, 0]
     # source RA
@@ -109,7 +105,8 @@ region_dic = {
 }
 
 
-def load_cutout(file_in, source='L1448N', is_hdu=False):
+def load_cutout(file_in: str, source: str = 'L1448N',
+                is_hdu: bool = False) -> fits.hdu.hdulist.HDUList:
     """
     Convenience function to load a FITS file, or an existing HDU,
     and to generate a cutout following the requested center and sizes.
@@ -155,7 +152,7 @@ def load_cutout(file_in, source='L1448N', is_hdu=False):
     return hdu
 
 
-def get_figsize(source):
+def get_figsize(source: str) -> tuple[float, float]:
     """
     Convenience function to get the figure size for a given source.
     """
@@ -167,7 +164,7 @@ def get_figsize(source):
     return fig_width, fig_height
 
 
-def get_region_center(source):
+def get_region_center(source: str) -> tuple[u.Quantity, u.Quantity]:
     """
     Convenience function to get the region center for a given source.
     """
@@ -179,3 +176,20 @@ def get_region_center(source):
         ra0 = position.ra.deg
         dec0 = position.dec.deg
     return ra0, dec0
+
+
+def get_region_names() -> list[str]:
+    """
+    Convenience function to get the available region names.
+    """
+    # return region_dic.keys()
+    return list(region_dic)
+
+
+def get_outflow_information(
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Convenience function to get the list of region center for a given source.
+    """
+    sources_outflowPA, RA_source, Dec_source, _, _, outflowPA, label_offsetPA = load_sources_table()
+    return sources_outflowPA, RA_source, Dec_source, outflowPA, label_offsetPA

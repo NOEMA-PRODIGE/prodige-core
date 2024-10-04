@@ -9,9 +9,9 @@ data_directory = os.getcwd() + '/'
 region = 'L1448N'
 # continuum baseband
 bb = 'li'
-# print('>>>>> ' + region)
-# pcore.plot_continuum(region, bb, data_directory, cmap='inferno', mosaic=True,
-#                      color_nan='0.9', do_marker=True, do_outflow=True,)
+print('>>>>> ' + region)
+pcore.plot_continuum(region, bb, data_directory, cmap='inferno', mosaic=True,
+                     color_nan='0.9', do_marker=True, do_outflow=True,)
 
 # name of the region
 region = 'B5-IRS1'

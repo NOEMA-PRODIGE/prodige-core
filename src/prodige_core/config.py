@@ -30,6 +30,6 @@ pyplot_params = {
     'font.family': 'serif'
 }
 
-source_filename = 'sources.dat'
+source_filename = 'sources.csv'
 distance = 288.0  # pc
 cmap_default = 'viridis'
