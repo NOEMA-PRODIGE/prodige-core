@@ -168,9 +168,7 @@ def annotate_sources(ax: plt.Axes, wcs: WCS.wcs,
     sources_name, sources_RA, sources_Dec, _, _, _, label_offsetPA = load_sources_table()
     # loop over all labels
     for source_i, RA_i, Dec_i, offset_PA_i in zip(sources_name, sources_RA, sources_Dec, label_offsetPA):
-        # for k in range(sources_name.size):
         c = SkyCoord(RA_i + ' ' + Dec_i, unit=(u.hourangle, u.deg))
-        #  sources_Dec[k], unit=(u.hourangle, u.deg))
         # Check if source is within the field of view
         if wcs.footprint_contains(c) == False:
             continue
@@ -257,8 +255,20 @@ def annotate_outflow(ax: plt.Axes, wcs: WCS.wcs, arrow_width: float = 1.0,
                   head_width=default_head_width*arrow_width, alpha=0.7,
                   transform=ax.get_transform('fk5'), zorder=21)
 
+@u.quantity_input
+def validate_frequency(frequency: u.Hz) -> bool:
+    """
+    Function to validate the frequency.
+    Parameters:
+    frequency: frequency in units of Hz (e.g., 1*u.GHz)
 
-def pb_telecope(frequency: float, telescope: str = 'NOEMA') -> u.Quantity:
+    Returns:
+    True if the frequency is valid.
+    """
+    return True
+
+
+def pb_telecope(frequency: u.Hz, telescope: str = 'NOEMA') -> u.Quantity:
     """
     Function to compute the primary beam of the NOEMA telescope.
     Parameters:
@@ -266,13 +276,14 @@ def pb_telecope(frequency: float, telescope: str = 'NOEMA') -> u.Quantity:
     telescope: name of the telescope
 
     Returns:
-    primary beam in arcsec
+    primary beam in degrees
     """
+    validate_frequency(frequency)
     if telescope == 'NOEMA':
         # NOEMA primary beam
         pb = (64.1 * u.arcsec * 72.78382 * u.GHz / frequency).decompose()
     elif telescope == 'ALMA':
-        pb = 1.13 * 3e8 / frequency / 15.0 * 3600.0
+        pb = (19.0 * u.arcsec * 300 * u.GHz / frequency).decompose()
     elif telescope == 'SMA':
         pb = (36.0 * u.arcsec * 345 * u.GHz / frequency).decompose()
     elif telescope == 'VLA':

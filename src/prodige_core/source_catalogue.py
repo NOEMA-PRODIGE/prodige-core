@@ -123,14 +123,11 @@ def load_cutout(file_in: str, source: str = 'L1448N',
     Return:
     It returns the HDU of the cutout defined by the global variables: position and cutout_size.
     """
-    if source not in region_dic.keys():
-        raise ValueError('Source not in region dictionary')
-    else:
-        # get the region center
-        position = SkyCoord(region_dic[source]['RA0'] + ' ' +
-                            region_dic[source]['Dec0'], unit=(u.hourangle, u.deg))
-        cutout_size = u.Quantity((region_dic[source]['height'],
-                                  region_dic[source]['width']))
+    validate_source_id(source)
+    position = SkyCoord(region_dic[source]['RA0'] + ' ' +
+                        region_dic[source]['Dec0'], unit=(u.hourangle, u.deg))
+    cutout_size = u.Quantity((region_dic[source]['height'],
+                                region_dic[source]['width']))
 
     if is_hdu == False:
         hdu = fits.open(file_in)[0]
@@ -151,16 +148,21 @@ def load_cutout(file_in: str, source: str = 'L1448N',
             del hdu.header[key]
     return hdu
 
+def validate_source_id(source: str) -> bool:
+    """
+    Convenience function to validate the source name.
+    """
+    if source not in region_dic:
+        raise ValueError('Source not in source_id list')
+    return True
 
 def get_figsize(source: str) -> tuple[float, float]:
     """
     Convenience function to get the figure size for a given source.
     """
-    if source not in region_dic.keys():
-        raise ValueError('Source not in region dictionary')
-    else:
-        fig_width = region_dic[source]['fig_width']
-        fig_height = region_dic[source]['fig_height']
+    validate_source_id(source)
+    fig_width = region_dic[source]['fig_width']
+    fig_height = region_dic[source]['fig_height']
     return fig_width, fig_height
 
 
@@ -168,13 +170,11 @@ def get_region_center(source: str) -> tuple[u.Quantity, u.Quantity]:
     """
     Convenience function to get the region center for a given source.
     """
-    if source not in region_dic.keys():
-        raise ValueError('Source not in region dictionary')
-    else:
-        position = SkyCoord(region_dic[source]['RA0'] + ' ' +
-                            region_dic[source]['Dec0'], unit=(u.hourangle, u.deg))
-        ra0 = position.ra.deg
-        dec0 = position.dec.deg
+    validate_source_id(source)
+    position = SkyCoord(region_dic[source]['RA0'] + ' ' +
+                        region_dic[source]['Dec0'], unit=(u.hourangle, u.deg))
+    ra0 = position.ra.deg
+    dec0 = position.dec.deg
     return ra0, dec0
 
 

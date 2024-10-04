@@ -1,7 +1,15 @@
 import prodige_core.source_catalogue
-
 from prodige_core.source_catalogue import region_dic
 import pytest
+
+
+def test_validate_source_id_no_source() -> None:
+    with pytest.raises(ValueError):
+        prodige_core.source_catalogue.validate_source_id('test')
+
+def test_validate_source_id_source() -> None:
+    # with pytest.raises(ValueError):
+    assert prodige_core.source_catalogue.validate_source_id('B1-bS')
 
 
 def test_get_outflow_information_number_source() -> None:
@@ -33,3 +41,9 @@ def test_get_region_names_number_source() -> None:
 def test_load_cutout_nofile() -> None:
     with pytest.raises(ValueError):
         prodige_core.source_catalogue.load_cutout('test.fits', source='test')
+
+
+def test_get_region_center() -> None:
+    ra0, dec0 = prodige_core.source_catalogue.get_region_center('L1448N')
+    assert (ra0 == pytest.approx((3 + (25 + 36.44/60.)/60.)*15.)) \
+        and (dec0 == pytest.approx(30 + (45 +18.3/60.)/60.))
