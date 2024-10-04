@@ -371,8 +371,7 @@ def plot_continuum(region: str, bb: str, data_directory: str,
                         ax.get_position().height])
     # add colorbar
     cb = fig.colorbar(im, cax=cax)
-    cb.set_label(r'$I_{' + str(wavelength.value) +
-                 '\mathrm{mm}}$ (mJy\,beam$^{-1}$)')
+    cb.set_label(r'$I_{' + str(wavelength.value) + '}$ mm (mJy\\,beam$^{-1}$)')
     cb.ax.yaxis.set_tick_params(
         color='black', labelcolor='black', direction='out')
     cb.ax.locator_params(nbins=5)

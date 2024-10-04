@@ -30,9 +30,29 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-# include = ["PRODIGE-core*"]
-# exclude = ["PRODIGE-core._dev*"]
 namespaces = false
+
+[tool.coverage.run]
+branch = true
+source = ["prodige_core"]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+    "--cov=prodige_core --cov-report html"
+    ]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug",
+    "if __name__ == .__main__.:"
+    ]
+ignore_errors = true
+
+[tool.coverage.html]
+directory = "coverage_html_report"
 
 [project.urls]
 Homepage = "https://github.com/NOEMA-PRODIGE/prodige-core"

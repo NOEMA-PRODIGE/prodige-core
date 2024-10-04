@@ -187,7 +187,7 @@ def get_region_names() -> list[str]:
 
 
 def get_outflow_information(
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[list[str], list[str], list[str], np.ndarray, np.ndarray]:
     """
     Convenience function to get the list of region center for a given source.
     """
