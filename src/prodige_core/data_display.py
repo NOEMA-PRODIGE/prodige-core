@@ -256,7 +256,7 @@ def annotate_outflow(ax: plt.Axes, wcs: WCS.wcs, arrow_width: float = 1.0,
                   head_width=default_head_width*arrow_width, alpha=0.7,
                   transform=ax.get_transform('fk5'), zorder=21)
 
-@u.quantity_input
+# @u.quantity_input
 def validate_frequency(frequency: u.Hz) -> bool:
     """
     Function to validate the frequency.
@@ -266,10 +266,11 @@ def validate_frequency(frequency: u.Hz) -> bool:
     Returns:
     True if the frequency is valid.
     """
+    frequency.to(u.Hz)
     return True
 
 
-def pb_telecope(frequency: u.Hz, telescope: str = 'NOEMA') -> u.Quantity:
+def pb_telecope(frequency: u.Hz, telescope: str = 'NOEMA') -> u.degree:
     """
     Function to compute the primary beam of the NOEMA telescope.
     Parameters:

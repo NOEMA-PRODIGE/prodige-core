@@ -7,10 +7,10 @@ import pytest
 
 
 def test_pb_telecope_good_frequency() -> None:
-    assert prodige_core.data_display.pb_telecope(72.78382*u.GHz, telescope='NOEMA') == 64.1 * u.arcsec \
-        and prodige_core.data_display.pb_telecope(345*u.GHz, telescope='SMA') == 36.0 * u.arcsec \
-        and prodige_core.data_display.pb_telecope(1*u.GHz, telescope='VLA') == 45.0 * u.arcmin \
-        and prodige_core.data_display.pb_telecope(300*u.GHz, telescope='ALMA') == 19.0*u.arcsec
+    assert prodige_core.data_display.pb_telecope(72.78382*u.GHz, telescope='NOEMA') == 64.1 * u.arcsec
+    assert prodige_core.data_display.pb_telecope(345*u.GHz, telescope='SMA') == 36.0 * u.arcsec
+    assert prodige_core.data_display.pb_telecope(1*u.GHz, telescope='VLA') == 45.0 * u.arcmin
+    assert prodige_core.data_display.pb_telecope(300*u.GHz, telescope='ALMA') == 19.0*u.arcsec
     
 def test_pb_telecope_bad_telescope() -> None:
     with pytest.raises(ValueError):
