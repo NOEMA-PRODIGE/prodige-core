@@ -37,6 +37,7 @@ branch = true
 source = ["prodige_core"]
 
 [tool.pytest.ini_options]
+pythonpath = "src/"
 addopts = [
     "--import-mode=importlib",
     "--cov=prodige_core --cov-report html"
