@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import prodige_core.source_catalogue
 from prodige_core.source_catalogue import region_dic
 import pytest

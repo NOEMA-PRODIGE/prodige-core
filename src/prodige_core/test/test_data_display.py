@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import prodige_core.data_display
 from astropy import units as u
 
