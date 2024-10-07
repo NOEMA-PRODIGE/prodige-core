@@ -88,3 +88,4 @@ venv.bak/
 # MacOSX
 **/.DS_Store
 .DS_Store
+pytest.xml
