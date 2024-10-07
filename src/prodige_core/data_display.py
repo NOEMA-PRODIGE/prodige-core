@@ -191,7 +191,7 @@ def annotate_sources(
     for source_i, RA_i, Dec_i, offset_PA_i in zip(
         sources_name, sources_RA, sources_Dec, label_offsetPA
     ):
-        c = SkyCoord(RA_i + " " + Dec_i, unit=(u.hourangle, u.deg))
+        c = SkyCoord(ra=RA_i, dec=Dec_i, unit=(u.hourangle, u.deg))
         # Check if source is within the field of view
         if wcs.footprint_contains(c) == False:
             continue
@@ -279,7 +279,7 @@ def annotate_outflow(
     ):
         # for k in range(sources_name.size):
         # source coordinate
-        c = SkyCoord(RA_i + " " + Dec_i, unit=(u.hourangle, u.deg))
+        c = SkyCoord(ra=RA_i, dec=Dec_i, unit=(u.hourangle, u.deg))
         #  sources_Dec[k], unit=(u.hourangle, u.deg))
         # check if source is within the field of view
         if wcs.footprint_contains(c) == False:
