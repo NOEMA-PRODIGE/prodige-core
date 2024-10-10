@@ -282,9 +282,9 @@ def annotate_outflow(
         c = SkyCoord(ra=RA_i, dec=Dec_i, unit=(u.hourangle, u.deg))
         #  sources_Dec[k], unit=(u.hourangle, u.deg))
         # check if source is within the field of view
-        if wcs.footprint_contains(c) == False:
+        # and if the outflow orientation is defined
+        if (wcs.footprint_contains(c) & np.isfinite(source_outflowPA_i)) == False:
             continue
-        # minus because angle is defined counter clockwise
         c_blue_start = c.directional_offset_by(
             source_outflowPA_i * u.deg, arrow_offset)
         c_blue_end = c.directional_offset_by(
@@ -376,6 +376,7 @@ def plot_continuum(
     region: str,
     bb: str,
     data_directory: str,
+    fig_directory: str = "./",
     cmap: str | None = None,
     color_nan: str = "0.1",
     mosaic: bool = False,
@@ -390,6 +391,7 @@ def plot_continuum(
     region: name of the region
     bb: baseband of the data (lo, li, ui, uo)
     data_directory: directory where the data is stored
+    fig_directory: directory where the figure will be stored
     cmap: colormap for the plot (default is the one listed in config.py)
     color_nan: color for NaN values
     mosaic: if True, mosaic data is used. This changes the filename format of the data.
@@ -521,7 +523,7 @@ def plot_continuum(
     )
     # save plot
     plt.savefig(
-        "continuum_" + region + "_" + bb + ".pdf",
+        fig_directory + "continuum_" + region + "_" + bb + ".pdf",
         format="pdf",
         bbox_inches="tight",
         pad_inches=0.01,

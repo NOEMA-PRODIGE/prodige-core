@@ -64,18 +64,6 @@ fig_height_def = 6.0
 width_def = 40.0 * u.arcsec
 height_def = 40.0 * u.arcsec
 
-source_id = [
-    "SVS13A",
-    "HH211",
-    "IC348MMS",
-    "IRAS4C",
-    "IRAS2A",
-    "IRAS2B",
-    "SVS13B",
-    "IRAS4B",
-    "L1448NW",
-]
-
 region_dic = {
     # these are the name of the mosaicked regions
     "L1448N": {
@@ -207,6 +195,79 @@ region_dic = {
         "fig_width": fig_width_def,
         "fig_height": fig_height_def,
     },
+    "HH211": {
+        "RA0": "03:43:56.806",
+        "Dec0": "32:00:50.202",
+        "height": height_def,
+        "width": width_def,
+        "fig_width": fig_width_def,
+        "fig_height": fig_height_def,
+    },
+    "IC348MMS": {
+        "RA0": "03:43:57.065",
+        "Dec0": "32:03:04.788",
+        "height": height_def,
+        "width": width_def,
+        "fig_width": fig_width_def,
+        "fig_height": fig_height_def,
+    },
+    "IRAS2A": {
+        "RA0": "03:28:55.569",
+        "Dec0": "31:14:37.025",
+        "height": height_def,
+        "width": width_def,
+        "fig_width": fig_width_def,
+        "fig_height": fig_height_def,
+    },
+    "IRAS2B": {
+        "RA0": "03:28:57.374",
+        "Dec0": "31:14:15.772",
+        "height": height_def,
+        "width": width_def,
+        "fig_width": fig_width_def,
+        "fig_height": fig_height_def,
+    },
+    "IRAS4B": {
+        "RA0": "03:29:12.016",
+        "Dec0": "31:13:08.031",
+        "height": height_def,
+        "width": width_def,
+        "fig_width": fig_width_def,
+        "fig_height": fig_height_def,
+    },
+    "IRAS4C": {
+        "RA0": "03:29:13.548",
+        "Dec0": "31:13:58.150",
+        "height": height_def,
+        "width": width_def,
+        "fig_width": fig_width_def,
+        "fig_height": fig_height_def,
+    },
+    "L1448NW": {
+        "RA0": "03:25:35.671",
+        "Dec0": "30:45:34.193",
+        "height": height_def,
+        "width": width_def,
+        "fig_width": fig_width_def,
+        "fig_height": fig_height_def,
+    },
+    "SVS13A": {
+        "RA0": "03:29:03.764",
+        "Dec0": "31:16:03.808",
+        "height": height_def,
+        "width": width_def,
+        "fig_width": fig_width_def,
+        "fig_height": fig_height_def,
+    },
+    "SVS13B": {
+        "RA0": "03:29:03.078",
+        "Dec0": "31:15:51.740",
+        "height": height_def,
+        "width": width_def,
+        "fig_width": fig_width_def,
+        "fig_height": fig_height_def,
+    },
+
 }
 
 
