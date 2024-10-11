@@ -9,6 +9,7 @@ def test_validate_source_id_no_source() -> None:
     with pytest.raises(ValueError):
         prodige_core.source_catalogue.validate_source_id('test')
 
+
 def test_validate_source_id_source() -> None:
     # with pytest.raises(ValueError):
     assert prodige_core.source_catalogue.validate_source_id('B1-bS')
@@ -17,7 +18,7 @@ def test_validate_source_id_source() -> None:
 def test_get_outflow_information_number_source() -> None:
     list_source_info = prodige_core.source_catalogue.get_outflow_information()
     # test that there are 16 sources in the region dictionary
-    assert len(list_source_info[0]) == 22
+    assert len(list_source_info[0]) == 75
 
 
 def test_get_outflow_information_first_last_sources() -> None:
@@ -25,7 +26,7 @@ def test_get_outflow_information_first_last_sources() -> None:
     # print(source_name[0])
     # test that the first source is 'IRS3A'
     assert (sources_outflowPA[0] == 'IRS3A') and (
-        sources_outflowPA[-1] == 'IRAS4C')
+        sources_outflowPA[-1] == 'SVS13C')
 
 
 def test_get_region_names_first_last_sources() -> None:
@@ -48,4 +49,4 @@ def test_load_cutout_nofile() -> None:
 def test_get_region_center() -> None:
     ra0, dec0 = prodige_core.source_catalogue.get_region_center('L1448N')
     assert (ra0 == pytest.approx((3 + (25 + 36.44/60.)/60.)*15.)) \
-        and (dec0 == pytest.approx(30 + (45 +18.3/60.)/60.))
+        and (dec0 == pytest.approx(30 + (45 + 18.3/60.)/60.))
