@@ -50,3 +50,9 @@ def test_get_region_center() -> None:
     ra0, dec0 = prodige_core.source_catalogue.get_region_center('L1448N')
     assert (ra0 == pytest.approx((3 + (25 + 36.44/60.)/60.)*15.)) \
         and (dec0 == pytest.approx(30 + (45 + 18.3/60.)/60.))
+
+def test_get_figsize() -> None:
+    fig_size = prodige_core.source_catalogue.get_figsize('L1448N')
+    assert fig_size == (6.0, 6.0)
+    fig_size = prodige_core.source_catalogue.get_figsize('L1448C')
+    assert fig_size == (6.0, 6.0)

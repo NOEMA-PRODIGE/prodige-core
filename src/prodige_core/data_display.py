@@ -58,7 +58,7 @@ def get_contour_params(maximum: float, noise: float) -> tuple[float, float]:
     )
     # append -5 sigma to the array and multiply by step size
     steps_arr = np.append(-steps_arr[0], steps_arr) * 5.0 * noise
-    line_styles = ["dotted"] + ["solid"] * steps
+    line_styles = ["dotted"] + ["solid"] * (steps + 1)
     return steps_arr, line_styles
 
 
@@ -118,7 +118,10 @@ def get_frequency(header: fits.header.Header) -> float:
     Returns:
     frequency: frequency in GHz
     """
-    restfreq = header["RESTFREQ"]  # Hz
+    if 'RESTFREQ' not in header:
+        raise ValueError("RESTFREQ not found in header.")
+    else:
+        restfreq = header["RESTFREQ"]  # Hz
     return restfreq * 1e-9
 
 
@@ -131,8 +134,8 @@ def get_wavelength(header: fits.header.Header) -> float:
     Returns:
     wavelength: wavelength in mm
     """
-    restfreq = header["RESTFREQ"]  # Hz
-    wavelength = (restfreq * u.Hz).to(u.mm, equivalencies=u.spectral())
+    restfreq = get_frequency(header)
+    wavelength = (restfreq * u.GHz).to(u.mm, equivalencies=u.spectral())
     return np.around(wavelength, decimals=1)  # mm
 
 
