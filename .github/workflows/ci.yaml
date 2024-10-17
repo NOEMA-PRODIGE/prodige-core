@@ -20,9 +20,8 @@ jobs:
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
-      with: |
+      with: 
         python-version: ${{ matrix.python-version }}
-        python -m pip install --upgrade pip 
     
     - name: Install dependencies
       run: |
