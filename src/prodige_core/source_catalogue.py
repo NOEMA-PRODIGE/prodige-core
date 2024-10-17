@@ -9,7 +9,12 @@ from astropy import units as u
 from astropy.io import fits
 from astropy.wcs import WCS
 
-from importlib.resources import files
+
+try:
+    from importlib.resources import files
+except ImportError:
+    from importlib_resources import files
+
 from .config import source_filename
 
 
