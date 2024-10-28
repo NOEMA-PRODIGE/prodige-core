@@ -32,6 +32,8 @@ def determine_noise_map(data_2d: np.ndarray) -> float:
     Determine the noise in the continuum data.
     """
     # compute noise in continuum data
+    if isinstance(data_2d, np.ndarray) == False:
+        raise ValueError("Input data is not a numpy array.")
     noise_2dmap = sigma_clipped_stats(data_2d, sigma=3.0)[-1]
     return noise_2dmap
 
