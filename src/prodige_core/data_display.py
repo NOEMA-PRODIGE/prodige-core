@@ -32,8 +32,6 @@ def determine_noise_map(data_2d: np.ndarray) -> float:
     Determine the noise in the continuum data.
     """
     # compute noise in continuum data
-
-    # noise_continuum = np.nanstd(data_cont[170:210,100:130])
     noise_2dmap = sigma_clipped_stats(data_2d, sigma=3.0)[-1]
     return noise_2dmap
 
@@ -46,11 +44,11 @@ def get_contour_params(maximum: float, noise: float) -> tuple[float, float]:
     """
     # compute contour levels at -5,5,10,20,40,80x... sigma
     # determines the number of contours to be plotted
-    steps = int(np.log(maximum / (5.0 * noise)) / np.log(2.0)) + 1
+    steps = int(np.log(maximum / (5.0 * noise)) // np.log(2.0)) + 1
     steps_arr = np.logspace(
         start=0,
-        stop=steps + 1,
-        num=steps + 1,
+        stop=steps,
+        num=steps,
         endpoint=False,
         base=2.0,
         dtype=None,
