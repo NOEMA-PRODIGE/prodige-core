@@ -3,6 +3,7 @@ import numpy as np
 
 import prodige_core.data_display
 from astropy import units as u
+from astropy.io import fits
 
 import pytest
 
@@ -51,3 +52,22 @@ def test_get_contour_params() -> None:
     steps_arr, line_style = prodige_core.get_contour_params(50.0, 1.0)
     assert (steps_arr == [-5., 5., 10., 20., 40.]
             ).all() and (line_style == ['dotted'] + ['solid']*4)
+
+
+def test_filename_continuum() -> None:
+    assert prodige_core.data_display.filename_continuum(
+        'test', 'li', mosaic=True) == "test_CD_li_cont_rob1-selfcal.fits"
+    assert prodige_core.data_display.filename_continuum(
+        'test', 'li', mosaic=False) == "test_CD_li_cont_rob1-selfcal-pbcor.fits"
+
+
+def test_get_frequency() -> None:
+    hdu = fits.PrimaryHDU()
+    hdu.header["RESTFREQ"] = (72.78382e9, 'Hz')
+    assert prodige_core.data_display.get_frequency(hdu.header) == 72.78382
+
+
+def test_get_wavelength() -> None:
+    hdu = fits.PrimaryHDU()
+    hdu.header["RESTFREQ"] = (250.0e9, 'Hz')
+    assert prodige_core.data_display.get_wavelength(hdu.header) == 1.2*u.mm
