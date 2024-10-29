@@ -121,5 +121,5 @@ def test_load_continuum_data(tmp_path) -> None:
 
     hdu.header["BUNIT"] = "Jy/beam"
     hdu.writeto(file_link2, overwrite=True)
-    _, rms_out2, _ = prodige_core.data_display.load_continuum_data(file_link, "B1-bS")
+    _, rms_out2, _ = prodige_core.data_display.load_continuum_data(file_link2, "B1-bS")
     assert rms * 1e3 == pytest.approx(rms_out2, rel=0.05)

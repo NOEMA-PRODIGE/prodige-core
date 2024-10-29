@@ -100,8 +100,8 @@ def load_continuum_data(
     # Update the header with the updated WCS from the cutout, as well as the data in mJy/beam.
     header = hdu_cont.header
     if header["BUNIT"].casefold() == "JY/BEAM".casefold():
-        data_cont = np.squeeze(hdu_cont.data) * 1000.0
-        header["BUNIT"] == "mJy/beam"
+        data_cont = np.squeeze(hdu_cont.data) * 1e3
+        header["BUNIT"] = "mJy/beam"
     else:
         data_cont = np.squeeze(hdu_cont.data)
     # compute noise
