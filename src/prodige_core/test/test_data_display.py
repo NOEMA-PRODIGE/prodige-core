@@ -1,5 +1,6 @@
 from __future__ import annotations
 import numpy as np
+import os
 
 import prodige_core.data_display
 from astropy.io import fits
@@ -91,11 +92,12 @@ def test_filename_continuum() -> None:
         == "test_CD_li_cont_rob1-selfcal-pbcor.fits"
     )
 
+
 def test_load_continuum_data(tmp_path) -> None:
     dir = tmp_path / "sub"
     dir.mkdir()
-    file_link = dir / "test_image.fits"
-    # data = np.ones((101, 101))
+    file_link = os.path.join(os.fspath(dir), "test_image.fits")
+
     rms = 0.1
     data = np.random.normal(0, rms, (501, 501))
     ra0, dec0 = prodige_core.source_catalogue.get_region_center("B1-bS")
@@ -112,15 +114,11 @@ def test_load_continuum_data(tmp_path) -> None:
     hdu.header["CTYPE2"] = "DEC--TAN"
     hdu.header["BUNIT"] = "mJy/beam"
     hdu.writeto(file_link, overwrite=True)
-    _, rms_out, hd = prodige_core.data_display.load_continuum_data(
-        file_link, "B1-bS"
-    )
+    _, rms_out, hd = prodige_core.data_display.load_continuum_data(file_link, "B1-bS")
     assert (hd["NAXIS1"] == 200) and (hd["NAXIS2"] == 200)
-    assert (rms == pytest.approx(rms_out, rel=0.05))
-    
+    assert rms == pytest.approx(rms_out, rel=0.05)
+
     hdu.header["BUNIT"] = "Jy/beam"
     hdu.writeto(file_link, overwrite=True)
-    _, rms_out2, _ = prodige_core.data_display.load_continuum_data(
-        file_link, "B1-bS"
-    )
-    assert (rms*1e3 == pytest.approx(rms_out2, rel=0.05))
+    _, rms_out2, _ = prodige_core.data_display.load_continuum_data(file_link, "B1-bS")
+    assert rms * 1e3 == pytest.approx(rms_out2, rel=0.05)
