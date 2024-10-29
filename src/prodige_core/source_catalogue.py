@@ -309,7 +309,10 @@ def load_cutout(
     else:
         hdu = file_in.copy()
     # Make the cutout, including the WCS
-    wcs_original = WCS(hdu.header).dropaxis(2)
+    if hdu.header["NAXIS"] != 2:
+        wcs_original = WCS(hdu.header).dropaxis(2)
+    else:
+        wcs_original = WCS(hdu.header)
     cutout = Cutout2D(
         np.squeeze(hdu.data), position=position, size=cutout_size, wcs=wcs_original
     )
