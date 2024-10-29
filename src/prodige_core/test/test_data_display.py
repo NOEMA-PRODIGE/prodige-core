@@ -97,6 +97,7 @@ def test_load_continuum_data(tmp_path) -> None:
     dir = tmp_path / "sub"
     dir.mkdir()
     file_link = os.path.join(os.fspath(dir), "test_image.fits")
+    file_link2 = os.path.join(os.fspath(dir), "test_image2.fits")
 
     rms = 0.1
     data = np.random.normal(0, rms, (501, 501))
@@ -119,6 +120,6 @@ def test_load_continuum_data(tmp_path) -> None:
     assert rms == pytest.approx(rms_out, rel=0.05)
 
     hdu.header["BUNIT"] = "Jy/beam"
-    hdu.writeto(file_link, overwrite=True)
+    hdu.writeto(file_link2, overwrite=True)
     _, rms_out2, _ = prodige_core.data_display.load_continuum_data(file_link, "B1-bS")
     assert rms * 1e3 == pytest.approx(rms_out2, rel=0.05)
