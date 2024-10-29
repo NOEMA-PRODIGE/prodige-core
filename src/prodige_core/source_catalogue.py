@@ -272,7 +272,6 @@ region_dic = {
         "fig_width": fig_width_def,
         "fig_height": fig_height_def,
     },
-
 }
 
 

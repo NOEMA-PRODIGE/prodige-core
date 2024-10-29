@@ -118,7 +118,7 @@ def get_frequency(header: fits.header.Header) -> float:
     Returns:
     frequency: frequency in GHz
     """
-    if 'RESTFREQ' not in header:
+    if "RESTFREQ" not in header:
         raise ValueError("RESTFREQ not found in header.")
     else:
         restfreq = header["RESTFREQ"]  # Hz
@@ -212,8 +212,7 @@ def annotate_sources(
             )
 
         if label == True:
-            c_label = c.directional_offset_by(
-                offset_PA_i * u.deg, label_offset)
+            c_label = c.directional_offset_by(offset_PA_i * u.deg, label_offset)
             label_text = ax.text(
                 c_label.ra.degree,
                 c_label.dec.degree,
@@ -288,10 +287,8 @@ def annotate_outflow(
         # and if the outflow orientation is defined
         if (wcs.footprint_contains(c) & np.isfinite(source_outflowPA_i)) == False:
             continue
-        c_blue_start = c.directional_offset_by(
-            source_outflowPA_i * u.deg, arrow_offset)
-        c_blue_end = c.directional_offset_by(
-            source_outflowPA_i * u.deg, arrow_length)
+        c_blue_start = c.directional_offset_by(source_outflowPA_i * u.deg, arrow_offset)
+        c_blue_end = c.directional_offset_by(source_outflowPA_i * u.deg, arrow_length)
         c_red_start = c.directional_offset_by(
             (180 + source_outflowPA_i) * u.deg, arrow_offset
         )
@@ -455,8 +452,7 @@ def plot_continuum(
         )
         ax.add_patch(circ)
     # add continuum contour levels
-    cont_levels, style_levels = get_contour_params(
-        np.nanmax(data_cont), noise_cont)
+    cont_levels, style_levels = get_contour_params(np.nanmax(data_cont), noise_cont)
 
     ax.contour(
         data_cont,
@@ -509,17 +505,14 @@ def plot_continuum(
     # add colorbar
     cb = fig.colorbar(im, cax=cax)
     cb.set_label(r"$I_{" + str(wavelength.value) + "}$ mm (mJy\\,beam$^{-1}$)")
-    cb.ax.yaxis.set_tick_params(
-        color="black", labelcolor="black", direction="out")
+    cb.ax.yaxis.set_tick_params(color="black", labelcolor="black", direction="out")
     cb.ax.locator_params(nbins=5)
 
     # cb.locator = MultipleLocator(10.0)
     cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.0f}"))
     # add linear scale bar (1000 au)
-    length = (1e3 * u.au / (distance * u.pc)
-              ).to(u.deg, u.dimensionless_angles())
-    add_scalebar(ax, length, label=r"1\,000 au",
-                 color=label_col, corner="bottom right")
+    length = (1e3 * u.au / (distance * u.pc)).to(u.deg, u.dimensionless_angles())
+    add_scalebar(ax, length, label=r"1\,000 au", color=label_col, corner="bottom right")
     # add beam
     add_beam(
         ax, header=hd_cont, frame=False, pad=0.2, color=label_col, corner="bottom left"
