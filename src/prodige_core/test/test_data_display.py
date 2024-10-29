@@ -86,7 +86,7 @@ def test_noise_map() -> None:
 def test_get_contour_params() -> None:
     lev_param = [-5.0, 5.0, 10.0]
     line_par = ['dotted'] + ['solid'] * 2
-    ret_lev_param, ret_line_par = prodige_core.data_display.get_contour_params(5.1, 1.0)
+    ret_lev_param, ret_line_par = prodige_core.data_display.get_contour_params(10.1, 1.0)
     assert  (ret_lev_param == lev_param).all()
     assert ret_line_par == line_par
 
