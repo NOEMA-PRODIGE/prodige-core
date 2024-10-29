@@ -11,8 +11,6 @@ import pytest
 def test_validate_source_id() -> None:
     with pytest.raises(ValueError):
         prodige_core.source_catalogue.validate_source_id("test")
-    # def test_validate_source_id_source() -> None:
-    # with pytest.raises(ValueError):
     assert prodige_core.source_catalogue.validate_source_id("B1-bS")
 
 
@@ -24,7 +22,7 @@ def test_get_outflow_information() -> None:
     assert (sources_outflowPA[0] == "IRS3A") and (sources_outflowPA[-1] == "SVS13C")
 
 
-def test_get_region_names_first() -> None:
+def test_get_region_names() -> None:
     source_name = prodige_core.source_catalogue.get_region_names()
     # test that the first source is 'IRS3A'
     assert (source_name[0] == "L1448N") and (source_name[-1] == "SVS13B")

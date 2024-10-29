@@ -90,3 +90,37 @@ def test_filename_continuum() -> None:
         prodige_core.data_display.filename_continuum("test", "li", mosaic=False)
         == "test_CD_li_cont_rob1-selfcal-pbcor.fits"
     )
+
+def test_load_continuum_data(tmp_path) -> None:
+    dir = tmp_path / "sub"
+    dir.mkdir()
+    file_link = dir / "test_image.fits"
+    # data = np.ones((101, 101))
+    rms = 0.1
+    data = np.random.normal(0, rms, (501, 501))
+    ra0, dec0 = prodige_core.source_catalogue.get_region_center("B1-bS")
+    hdu = fits.PrimaryHDU(data=data)
+    hdu.header["CRVAL1"] = ra0
+    hdu.header["CRVAL2"] = dec0
+    hdu.header["CRPIX1"] = 251
+    hdu.header["CRPIX2"] = 251
+    hdu.header["CDELT1"] = 40.0 * u.arcsec.to(u.deg) / 200
+    hdu.header["CDELT2"] = 40.0 * u.arcsec.to(u.deg) / 200
+    hdu.header["CUNIT1"] = "deg"
+    hdu.header["CUNIT2"] = "deg"
+    hdu.header["CTYPE1"] = "RA---TAN"
+    hdu.header["CTYPE2"] = "DEC--TAN"
+    hdu.header["BUNIT"] = "mJy/beam"
+    hdu.writeto(file_link, overwrite=True)
+    _, rms_out, hd = prodige_core.data_display.load_continuum_data(
+        file_link, "B1-bS"
+    )
+    assert (hd["NAXIS1"] == 200) and (hd["NAXIS2"] == 200)
+    assert (rms == pytest.approx(rms_out, rel=0.05))
+    
+    hdu.header["BUNIT"] = "Jy/beam"
+    hdu.writeto(file_link, overwrite=True)
+    _, rms_out2, _ = prodige_core.data_display.load_continuum_data(
+        file_link, "B1-bS"
+    )
+    assert (rms*1e3 == pytest.approx(rms_out2, rel=0.05))
