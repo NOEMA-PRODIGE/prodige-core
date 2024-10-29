@@ -17,26 +17,16 @@ def test_validate_source_id() -> None:
 
 
 def test_get_outflow_information() -> None:
-    # list_source_info = prodige_core.source_catalogue.get_outflow_information()
-    # test that there are 76 sources in the region dictionary
-    # def test_get_outflow_information_first_last_sources() -> None:
     sources_outflowPA, _, _, _, _ = prodige_core.source_catalogue.get_outflow_information()
-    # print(source_name[0])
-    # test that the first source is 'IRS3A'
     assert len(sources_outflowPA) == 76
     assert (sources_outflowPA[0] == 'IRS3A') and (
         sources_outflowPA[-1] == 'SVS13C')
 
 
-def test_get_region_names_first_last_sources() -> None:
+def test_get_region_names_first() -> None:
     source_name = prodige_core.source_catalogue.get_region_names()
     # test that the first source is 'IRS3A'
     assert (source_name[0] == 'L1448N') and (source_name[-1] == 'SVS13B')
-
-
-def test_get_region_names_number_source() -> None:
-    source_name = prodige_core.source_catalogue.get_region_names()
-    # test that there are 16 sources in the region dictionary
     assert len(source_name) == len(list(region_dic))
 
 
