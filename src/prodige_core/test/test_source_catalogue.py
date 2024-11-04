@@ -1,5 +1,6 @@
 from __future__ import annotations
 import numpy as np
+from contextlib import nullcontext as does_not_raise
 
 from astropy import units as u
 from astropy.io import fits
@@ -8,10 +9,14 @@ from prodige_core.source_catalogue import region_dic
 import pytest
 
 
-def test_validate_source_id() -> None:
-    with pytest.raises(ValueError):
-        prodige_core.source_catalogue.validate_source_id("test")
-    assert prodige_core.source_catalogue.validate_source_id("B1-bS")
+@pytest.mark.parametrize("source_id, expected_raise",
+                         [
+                             ("test", pytest.raises(ValueError)),
+                             ("B1-bS", does_not_raise()),],)
+def test_validate_source_id(source_id, expected_raise) -> None:
+    with expected_raise:
+        prodige_core.source_catalogue.validate_source_id(
+            source_id) is not None
 
 
 def test_get_outflow_information() -> None:
@@ -19,7 +24,8 @@ def test_get_outflow_information() -> None:
         prodige_core.source_catalogue.get_outflow_information()
     )
     assert len(sources_outflowPA) == 76
-    assert (sources_outflowPA[0] == "IRS3A") and (sources_outflowPA[-1] == "SVS13C")
+    assert (sources_outflowPA[0] == "IRS3A") and (
+        sources_outflowPA[-1] == "SVS13C")
 
 
 def test_get_region_names() -> None:
@@ -58,7 +64,8 @@ def test_load_cutout() -> None:
     hdu_new2 = prodige_core.source_catalogue.load_cutout(
         hdu2, source="B1-bS", is_hdu=True
     )
-    assert (hdu_new.header["NAXIS1"] == 20) and (hdu_new.header["NAXIS2"] == 20)
+    assert (hdu_new.header["NAXIS1"] == 20) and (
+        hdu_new.header["NAXIS2"] == 20)
     assert (hdu_new.header["CRVAL1"] == pytest.approx(ra0)) and (
         hdu_new.header["CRVAL2"] == pytest.approx(dec0)
     )
