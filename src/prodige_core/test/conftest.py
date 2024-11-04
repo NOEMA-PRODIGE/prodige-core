@@ -25,7 +25,12 @@ def sample_image() -> fits.PrimaryHDU:
         hdu.header["CUNIT2"] = "deg"
         hdu.header["CTYPE1"] = "RA---TAN"
         hdu.header["CTYPE2"] = "DEC--TAN"
+        hdu.header["EQUINOX"] = 2000.0
+        hdu.header["RADESYS"] = ("FK5", 'Coordinate system')
         hdu.header["RESTFREQ"] = (72.78382e9, "Hz")
-        hdu.header["BUNIT"] = ("Jy/Beam", "Brightness unit")
+        hdu.header["BUNIT"] = ("mJy/Beam", "Brightness unit")
+        hdu.header["BMAJ"] = 0.26E-3
+        hdu.header["BMIN"] = 0.16E-3
+        hdu.header["BPA"] = 22.0
         return hdu
     return make_sample_image

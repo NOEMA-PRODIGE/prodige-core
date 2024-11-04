@@ -47,6 +47,8 @@ def get_contour_params(maximum: float, noise: float) -> tuple[float, float]:
     # compute contour levels at -5,5,10,20,40,80x... sigma
     # determines the number of contours to be plotted
     steps = int(np.log(maximum / (5.0 * noise)) // np.log(2.0)) + 1
+    if steps < 1:
+        return [0], ['solid'], False
     steps_arr = np.logspace(
         start=0,
         stop=steps,
@@ -59,7 +61,7 @@ def get_contour_params(maximum: float, noise: float) -> tuple[float, float]:
     # append -5 sigma to the array and multiply by step size
     steps_arr = np.append(-steps_arr[0], steps_arr) * 5.0 * noise
     line_styles = ["dotted"] + ["solid"] * steps
-    return steps_arr, line_styles
+    return steps_arr, line_styles, True
 
 
 def filename_continuum(region: str, bb: str, mosaic: bool = False) -> str:
@@ -212,7 +214,8 @@ def annotate_sources(
             )
 
         if label == True:
-            c_label = c.directional_offset_by(offset_PA_i * u.deg, label_offset)
+            c_label = c.directional_offset_by(
+                offset_PA_i * u.deg, label_offset)
             label_text = ax.text(
                 c_label.ra.degree,
                 c_label.dec.degree,
@@ -287,8 +290,10 @@ def annotate_outflow(
         # and if the outflow orientation is defined
         if (wcs.footprint_contains(c) & np.isfinite(source_outflowPA_i)) == False:
             continue
-        c_blue_start = c.directional_offset_by(source_outflowPA_i * u.deg, arrow_offset)
-        c_blue_end = c.directional_offset_by(source_outflowPA_i * u.deg, arrow_length)
+        c_blue_start = c.directional_offset_by(
+            source_outflowPA_i * u.deg, arrow_offset)
+        c_blue_end = c.directional_offset_by(
+            source_outflowPA_i * u.deg, arrow_length)
         c_red_start = c.directional_offset_by(
             (180 + source_outflowPA_i) * u.deg, arrow_offset
         )
@@ -331,7 +336,6 @@ def annotate_outflow(
         )
 
 
-# @u.quantity_input
 def validate_frequency(frequency: u.Hz) -> bool:
     """
     Function to validate the frequency.
@@ -379,10 +383,13 @@ def plot_continuum(
     fig_directory: str = "./",
     cmap: str | None = None,
     color_nan: str = "0.1",
+    vmin: float = None,
+    vmax: float = None,
     mosaic: bool = False,
     do_marker: bool = False,
     do_outflow: bool = False,
     do_annotation: bool = True,
+    save_fig: bool = True,
 ) -> None:
     """
     Function to plot the continuum data with the sources and outflow orientations.
@@ -419,6 +426,10 @@ def plot_continuum(
     data_cont, noise_cont, hd_cont = load_continuum_data(
         data_directory + file_name, region
     )
+    if vmin == None:
+        vmin = -5.0 * noise_cont
+    if vmax == None:
+        vmax = 0.3 * np.nanmax(data_cont)
 
     wavelength = get_wavelength(hd_cont)
     wcs_cont = WCS(hd_cont)
@@ -435,8 +446,8 @@ def plot_continuum(
         cmap=color_map,
         alpha=1.0,
         transform=ax.get_transform(wcs_cont),
-        vmin=-5.0 * noise_cont,
-        vmax=0.3 * np.nanmax(data_cont),
+        vmin=vmin,
+        vmax=vmax,
     )
     if mosaic == False:
         frequeny = get_frequency(hd_cont) * u.GHz
@@ -452,27 +463,29 @@ def plot_continuum(
         )
         ax.add_patch(circ)
     # add continuum contour levels
-    cont_levels, style_levels = get_contour_params(np.nanmax(data_cont), noise_cont)
+    cont_levels, style_levels, valid_contour = get_contour_params(
+        np.nanmax(data_cont), noise_cont)
 
-    ax.contour(
-        data_cont,
-        colors="white",
-        alpha=1.0,
-        levels=cont_levels,
-        linestyles=style_levels,
-        linewidths=0.75,
-        transform=ax.get_transform(wcs_cont),
-    )
+    if valid_contour:
+        ax.contour(
+            data_cont,
+            colors="white",
+            alpha=1.0,
+            levels=cont_levels,
+            linestyles=style_levels,
+            linewidths=0.75,
+            transform=ax.get_transform(wcs_cont),
+        )
 
-    ax.contour(
-        data_cont,
-        colors="black",
-        alpha=1.0,
-        levels=cont_levels,
-        linestyles=style_levels,
-        linewidths=0.35,
-        transform=ax.get_transform(wcs_cont),
-    )
+        ax.contour(
+            data_cont,
+            colors="black",
+            alpha=1.0,
+            levels=cont_levels,
+            linestyles=style_levels,
+            linewidths=0.35,
+            transform=ax.get_transform(wcs_cont),
+        )
 
     # annotate source names
     ax.autoscale(enable=False)
@@ -505,23 +518,27 @@ def plot_continuum(
     # add colorbar
     cb = fig.colorbar(im, cax=cax)
     cb.set_label(r"$I_{" + str(wavelength.value) + "}$ mm (mJy\\,beam$^{-1}$)")
-    cb.ax.yaxis.set_tick_params(color="black", labelcolor="black", direction="out")
+    cb.ax.yaxis.set_tick_params(
+        color="black", labelcolor="black", direction="out")
     cb.ax.locator_params(nbins=5)
 
     # cb.locator = MultipleLocator(10.0)
     cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.0f}"))
     # add linear scale bar (1000 au)
-    length = (1e3 * u.au / (distance * u.pc)).to(u.deg, u.dimensionless_angles())
-    add_scalebar(ax, length, label=r"1\,000 au", color=label_col, corner="bottom right")
+    length = (1e3 * u.au / (distance * u.pc)
+              ).to(u.deg, u.dimensionless_angles())
+    add_scalebar(ax, length, label=r"1\,000 au",
+                 color=label_col, corner="bottom right")
     # add beam
     add_beam(
         ax, header=hd_cont, frame=False, pad=0.2, color=label_col, corner="bottom left"
     )
     # save plot
-    plt.savefig(
-        fig_directory + "continuum_" + region + "_" + bb + ".pdf",
-        format="pdf",
-        bbox_inches="tight",
-        pad_inches=0.01,
-    )
-    plt.close()
+    if save_fig:
+        plt.savefig(
+            fig_directory + "continuum_" + region + "_" + bb + ".pdf",
+            format="pdf",
+            bbox_inches="tight",
+            pad_inches=0.01,
+        )
+        plt.close()

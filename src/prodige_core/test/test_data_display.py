@@ -6,10 +6,11 @@ import prodige_core.data_display
 from astropy.io import fits
 from astropy import units as u
 from astropy.io import fits
+from astropy.wcs import WCS
+import matplotlib.pyplot as plt
+from matplotlib.testing.decorators import image_comparison
 
 import pytest
-
-# @pytest.mark.parametrize()
 
 
 def test_pb_telecope_good_frequency() -> None:
@@ -47,9 +48,11 @@ def test_validate_determine_noise_map_bad_input() -> None:
 
 
 def test_get_contour_params() -> None:
-    steps_arr, line_style = prodige_core.get_contour_params(50.0, 1.0)
+    steps_arr, line_style, do_contours = prodige_core.get_contour_params(
+        50.0, 1.0)
     assert (steps_arr == [-5.0, 5.0, 10.0, 20.0, 40.0]).all()
     assert line_style == ["dotted"] + ["solid"] * 4
+    assert do_contours == True
 
 
 def test_get_frequency(sample_image) -> None:
@@ -122,3 +125,25 @@ def test_load_continuum_data(tmp_path, sample_image) -> None:
         file_link2, "B1-bS")
     assert (hd['BUNIT'].casefold() == 'mJy/beam'.casefold())
     assert rms * 1e3 == pytest.approx(rms_out2, rel=0.05)
+
+
+@image_comparison(baseline_images=['line_dashes'], remove_text=True,
+                  extensions=['png'], style='mpl20')
+def test_plot_continuum(tmp_path, sample_image) -> None:
+    dir = tmp_path
+    dir.mkdir(exist_ok=True)
+    file_name = prodige_core.data_display.filename_continuum(
+        'B1-bS', 'li', False)
+    file_link = os.path.join(os.fspath(dir), file_name)  # "test_image.fits")
+    hdu = sample_image(is_2d=True)
+    rms = 0.1
+    data = np.random.normal(0, rms, hdu.data.shape)  # (501, 501))
+    hdu.data = data
+    hdu.writeto(file_link, overwrite=True)
+
+    # wcs_cont = WCS(hdu.header)
+    # fig = plt.figure(1, figsize=(6, 6))
+    # ax = plt.subplot(1, 1, 1, projection=wcs_cont)
+    # assert prodige_core.data_display.prodige_style(ax)
+    prodige_core.data_display.plot_continuum(
+        'B1-bS', 'li', os.fspath(dir)+'/', mosaic=False, vmin=-0.5, vmax=2.0, save_fig=False)
