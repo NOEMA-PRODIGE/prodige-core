@@ -7,15 +7,14 @@ from astropy import units as u
 
 
 @pytest.fixture
-def sample_image():  # is_2d: bool = True) -> fits.PrimaryHDU:
+def sample_image() -> fits.PrimaryHDU:
     def make_sample_image(is_2d: bool = True) -> fits.PrimaryHDU:
         if is_2d:
             data = np.ones((101, 101))
         else:
-            data = np.ones((1, 101, 101))  # data = data[np.newaxis, :, :]
+            data = np.ones((1, 101, 101))
         ra0, dec0 = prodige_core.source_catalogue.get_region_center("B1-bS")
         hdu = fits.PrimaryHDU(data=data)
-        # init_header(hdu)
         hdu.header["CRVAL1"] = ra0
         hdu.header["CRVAL2"] = dec0
         hdu.header["CRPIX1"] = 51
