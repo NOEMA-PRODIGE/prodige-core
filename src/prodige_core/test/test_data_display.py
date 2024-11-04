@@ -127,7 +127,7 @@ def test_load_continuum_data(tmp_path, sample_image) -> None:
     assert rms * 1e3 == pytest.approx(rms_out2, rel=0.05)
 
 
-@image_comparison(baseline_images=['line_dashes'], remove_text=True,
+@image_comparison(baseline_images=['example_map'], remove_text=True,
                   extensions=['png'], style='mpl20')
 def test_plot_continuum(tmp_path, sample_image) -> None:
     dir = tmp_path
@@ -137,13 +137,11 @@ def test_plot_continuum(tmp_path, sample_image) -> None:
     file_link = os.path.join(os.fspath(dir), file_name)  # "test_image.fits")
     hdu = sample_image(is_2d=True)
     rms = 0.1
-    data = np.random.normal(0, rms, hdu.data.shape)  # (501, 501))
+    seed = 122807528840384100672342137672332424406
+    rng = np.random.default_rng(seed)
+    data = rng.standard_normal(hdu.data.shape) * rms
     hdu.data = data
     hdu.writeto(file_link, overwrite=True)
 
-    # wcs_cont = WCS(hdu.header)
-    # fig = plt.figure(1, figsize=(6, 6))
-    # ax = plt.subplot(1, 1, 1, projection=wcs_cont)
-    # assert prodige_core.data_display.prodige_style(ax)
     prodige_core.data_display.plot_continuum(
-        'B1-bS', 'li', os.fspath(dir)+'/', mosaic=False, vmin=-0.5, vmax=2.0, save_fig=False)
+        'B1-bS', 'li', os.fspath(dir)+'/', mosaic=False, vmin=-0.5, vmax=2.0, save_fig=False, do_marker=True, do_annotation=True, do_outflow=True)
