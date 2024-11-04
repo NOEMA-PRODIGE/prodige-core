@@ -50,8 +50,8 @@ def test_load_cutout(sample_image) -> None:
     hdu_new_3d = prodige_core.source_catalogue.load_cutout(
         hdu_3d, source="B1-bS", is_hdu=True
     )
-    assert (hdu_2d_new.header["NAXIS1"] == 20) and (
-        hdu_2d_new.header["NAXIS2"] == 20)
+    assert (hdu_2d_new.header["NAXIS1"] == 200) and (
+        hdu_2d_new.header["NAXIS2"] == 200)
     assert (hdu_2d_new.header["CRVAL1"] == pytest.approx(ra0)) and (
         hdu_2d_new.header["CRVAL2"] == pytest.approx(dec0)
     )
