@@ -116,10 +116,12 @@ def test_load_continuum_data(tmp_path) -> None:
     hdu.header["BUNIT"] = "mJy/beam"
     hdu.writeto(file_link, overwrite=True)
     _, rms_out, hd = prodige_core.data_display.load_continuum_data(file_link, "B1-bS")
-    assert (hd["NAXIS1"] == 200) and (hd["NAXIS2"] == 200)
+    assert (hd["NAXIS1"] == 200) and (hd["NAXIS2"] == 200) 
+    assert (hd['BUNIT'].casefold() == 'mJy/beam'.casefold())
     assert rms == pytest.approx(rms_out, rel=0.05)
 
     hdu.header["BUNIT"] = "Jy/beam"
     hdu.writeto(file_link2, overwrite=True)
     _, rms_out2, _ = prodige_core.data_display.load_continuum_data(file_link2, "B1-bS")
+    assert (hd['BUNIT'].casefold() == 'mJy/beam'.casefold())
     assert rms * 1e3 == pytest.approx(rms_out2, rel=0.05)
