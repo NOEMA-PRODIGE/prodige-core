@@ -136,6 +136,7 @@ def test_plot_continuum(tmp_path, sample_image) -> None:
         'B1-bS', 'li', False)
     file_link = os.path.join(os.fspath(dir), file_name)  # "test_image.fits")
     hdu = sample_image(is_2d=True)
+    hdu.header['RESTFREQ'] = 216.7230e9
     rms = 0.1
     seed = 122807528840384100672342137672332424406
     rng = np.random.default_rng(seed)
