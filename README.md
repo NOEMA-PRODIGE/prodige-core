@@ -1,5 +1,7 @@
 # PRODIGE-core
-Collection of functions for a more common analysis/display of the PRODIGE program
+Collection of functions for a more common analysis/display of the PRODIGE program.
+
+This includes simple to use commands to make publication ready figures.
 
 Credits
 -------

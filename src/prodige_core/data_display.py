@@ -401,6 +401,8 @@ def plot_continuum(
     fig_directory: directory where the figure will be stored
     cmap: colormap for the plot (default is the one listed in config.py)
     color_nan: color for NaN values
+    vmin: minimum value for the color scale. If None, it is set to -5*noise
+    vmax: maximum value for the color scale. If None, it is set to 0.3*max(data)
     mosaic: if True, mosaic data is used. This changes the filename format of the data.
     do_marker: if True, markers are added to the source positions
     do_outflow: if True, outflow orientations are added to the plot
