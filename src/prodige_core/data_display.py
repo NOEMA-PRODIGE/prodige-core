@@ -20,7 +20,7 @@ from .source_catalogue import (
     get_outflow_information,
 )
 
-from .config import pyplot_params, distance, cmap_default
+from .config import pyplot_params, distance, cmap_default, cmap_mom0_default
 
 # name of the region
 label_col = "black"
@@ -79,6 +79,21 @@ def filename_continuum(region: str, bb: str, mosaic: bool = False) -> str:
     return datafile
 
 
+def filename_line_TdV(region: str, linename: str, mosaic: bool = False) -> str:
+    """Function to return the filename of the line integrated intensity data.
+    It follows the naming convention of PRODIGE.
+    Parameters:
+    region: name of the region
+    linename: line name (e.g., 'H2CO_l21')
+    mosaic: if True, mosaic data is used. This changes the filename format of the data.
+    """
+    if mosaic:
+        datafile = region + "_CD_" + linename + "_TdV.fits"
+    else:
+        datafile = region + "_CD_" + linename + "_TdV.fits"
+    return datafile
+
+
 def load_continuum_data(
     datafile: str,
     region: str,
@@ -109,6 +124,41 @@ def load_continuum_data(
     # compute noise
     noise_cont = determine_noise_map(data_cont)
     return data_cont, noise_cont, header
+
+
+def load_line_TdV(
+    datafile: str,
+    region: str,
+) -> tuple[np.ndarray, float, fits.header.Header]:
+    """
+    Function to load the integrated intensity map and return the cutout specified in the dictionary.
+    It return the data, estimated noise, and the FITS header.
+    Parameters:
+    datafile: fileneame of the data to load
+    region: name of the region
+
+    Returns:
+    data_TdV: integrated intensity map in mJy/beam km/s or K km/s
+    noise_map: estimated noise from the data
+    """
+    # loads the cutout of the region. It uses the region dictionary to set the cutout size.
+    hdu = load_cutout(datafile, source=region, is_hdu=False)
+    # set empty pixels (0.0) to NaN
+    hdu.data[hdu.data == 0.0] = np.nan
+    # Update the header with the updated WCS from the cutout, as well as the data in mJy/beam.
+    header = hdu.header
+    if header["BUNIT"].casefold() == "JY/BEAM KM/S".casefold():
+        data = np.squeeze(hdu.data) * 1e3
+        header["BUNIT"] = "mJy/beam km/s"
+    elif header["BUNIT"].casefold() == "mJY/BEAM KM/S".casefold():
+        data = np.squeeze(hdu.data)
+        header["BUNIT"] = "mJy/beam km/s"
+    else:
+        header["BUNIT"] = "K km/s"
+        data = np.squeeze(hdu.data)
+    # compute noise
+    noise_map = determine_noise_map(data)
+    return data, noise_map, header
 
 
 def get_frequency(header: fits.header.Header) -> float:
@@ -376,6 +426,21 @@ def pb_telecope(frequency: u.Hz, telescope: str = "NOEMA") -> u.degree:
     return pb.to(u.degree)
 
 
+def plot_PB(ax: plt.Axes, header: fits.header.Header, ra0: float, dec0: float) -> None:
+    frequeny = get_frequency(header) * u.GHz
+    pb_noema = pb_telecope(frequeny, telescope="NOEMA")
+    circ = SphericalCircle(
+        (ra0 * u.deg, dec0 * u.deg),
+        pb_noema / 2.0,
+        ls=(0, (5, 10)),
+        lw=1.0,
+        edgecolor="white",
+        facecolor="none",
+        transform=ax.get_transform("fk5"),
+    )
+    ax.add_patch(circ)
+
+
 def plot_continuum(
     region: str,
     bb: str,
@@ -452,18 +517,19 @@ def plot_continuum(
         vmax=vmax,
     )
     if mosaic == False:
-        frequeny = get_frequency(hd_cont) * u.GHz
-        pb_noema = pb_telecope(frequeny, telescope="NOEMA")
-        circ = SphericalCircle(
-            (ra0 * u.deg, dec0 * u.deg),
-            pb_noema / 2.0,
-            ls=(0, (5, 10)),
-            lw=1.0,
-            edgecolor="white",
-            facecolor="none",
-            transform=ax.get_transform("fk5"),
-        )
-        ax.add_patch(circ)
+        plot_PB(ax, hd_cont, ra0, dec0)
+        # frequeny = get_frequency(hd_cont) * u.GHz
+        # pb_noema = pb_telecope(frequeny, telescope="NOEMA")
+        # circ = SphericalCircle(
+        #     (ra0 * u.deg, dec0 * u.deg),
+        #     pb_noema / 2.0,
+        #     ls=(0, (5, 10)),
+        #     lw=1.0,
+        #     edgecolor="white",
+        #     facecolor="none",
+        #     transform=ax.get_transform("fk5"),
+        # )
+        # ax.add_patch(circ)
     # add continuum contour levels
     cont_levels, style_levels, valid_contour = get_contour_params(
         np.nanmax(data_cont), noise_cont)
@@ -539,6 +605,142 @@ def plot_continuum(
     if save_fig:
         plt.savefig(
             fig_directory + "continuum_" + region + "_" + bb + ".pdf",
+            format="pdf",
+            bbox_inches="tight",
+            pad_inches=0.01,
+        )
+        plt.close()
+
+
+def plot_line_mom0(
+    region: str,
+    linename: str,
+    bb: str,
+    data_directory: str,
+    fig_directory: str = "./",
+    cmap: str | None = None,
+    color_nan: str = "0.1",
+    vmin: float = None,
+    vmax: float = None,
+    mosaic: bool = False,
+    do_marker: bool = False,
+    do_outflow: bool = False,
+    do_annotation: bool = True,
+    save_fig: bool = True,
+) -> None:
+    label_col_TdV = 'white'
+    if cmap == None:
+        cmap = cmap_mom0_default
+    # use general plot parameters
+    plt.rcParams.update(pyplot_params)
+    color_map = plt.get_cmap(cmap).copy()
+    color_map.set_bad(color=color_nan)
+    # figure size from dictionary
+    fig_width, fig_height = get_figsize(region)
+    ra0, dec0 = get_region_center(region)
+    # load integrated intensity data
+    file_name = filename_line_TdV(region, linename, mosaic)
+    data, noise_map, hd_TdV = load_line_TdV(
+        data_directory + file_name, region
+    )
+    if vmin == None:
+        vmin = -5.0 * noise_map
+    if vmax == None:
+        vmax = np.nanmax(data)
+
+    wcs_TdV = WCS(hd_TdV)
+
+    # create figure
+    fig = plt.figure(1, figsize=(fig_width, fig_height))
+    ax = plt.subplot(1, 1, 1, projection=wcs_TdV)
+    # plot continuum in color
+    im = ax.imshow(
+        data,
+        origin="lower",
+        interpolation="None",
+        cmap=color_map,
+        alpha=1.0,
+        transform=ax.get_transform(wcs_TdV),
+        vmin=vmin,
+        vmax=vmax,
+    )
+    if mosaic == False:
+        plot_PB(ax, hd_TdV, ra0, dec0)
+    cont_levels, style_levels, valid_contour = get_contour_params(
+        np.nanmax(data), noise_map)
+
+    if valid_contour:
+        ax.contour(
+            data,
+            colors="white",
+            alpha=1.0,
+            levels=cont_levels,
+            linestyles=style_levels,
+            linewidths=0.75,
+            transform=ax.get_transform(wcs_TdV),
+        )
+
+        ax.contour(
+            data,
+            colors="black",
+            alpha=1.0,
+            levels=cont_levels,
+            linestyles=style_levels,
+            linewidths=0.35,
+            transform=ax.get_transform(wcs_TdV),
+        )
+
+    # annotate source names
+    ax.autoscale(enable=False)
+    if do_annotation == True:
+        annotate_sources(
+            ax,
+            wcs_TdV,
+            color="white",
+            color_back="black",
+            fontsize=10,
+            marker=do_marker,
+            label=True,
+            label_offset=4.0 * u.arcsec,
+            connect_line=True,
+        )
+
+    # add outflow orientations
+    if do_outflow:
+        annotate_outflow(ax, wcs_TdV, arrow_width=2.0)
+    prodige_style(ax)
+
+   # Get coordinates for colorbar
+    # cax = fig.add_axes(
+    #     [
+    #         ax.get_position().x1 + 0.005,
+    #         ax.get_position().y0,
+    #         0.025,
+    #         ax.get_position().height,
+    #     ]
+    # )
+    # add colorbar
+    # cb = fig.colorbar(im, cax=cax)
+    # cb.set_label(r"$I_{" + str(wavelength.value) + "}$ mm (mJy\\,beam$^{-1}$)")
+    # cb.ax.yaxis.set_tick_params(
+    #     color="black", labelcolor="black", direction="out")
+    # cb.ax.locator_params(nbins=5)
+
+    # cb.locator = MultipleLocator(10.0)
+    # cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.0f}"))
+    # add linear scale bar (1000 au)
+    length = (1e3 * u.au / (distance * u.pc)
+              ).to(u.deg, u.dimensionless_angles())
+    add_scalebar(ax, length, label=r"1\,000 au",
+                 color=label_col_TdV, corner="bottom right")
+    # add beam
+    add_beam(
+        ax, header=hd_TdV, frame=False, pad=0.2, color=label_col_TdV, corner="bottom left"
+    )
+    # save plot
+    if save_fig:
+        plt.savefig(
+            fig_directory + region + "_" + linename + "_TdV.pdf",
             format="pdf",
             bbox_inches="tight",
             pad_inches=0.01,
