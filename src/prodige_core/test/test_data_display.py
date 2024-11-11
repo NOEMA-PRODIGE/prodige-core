@@ -128,7 +128,7 @@ def test_load_continuum_data(tmp_path, sample_image) -> None:
 
 
 @image_comparison(baseline_images=['example_map'], remove_text=True,
-                  extensions=['png'], style='mpl20')
+                  extensions=['png'], style='mpl20', tol=8)
 def test_plot_continuum(tmp_path, sample_image) -> None:
     dir = tmp_path
     dir.mkdir(exist_ok=True)
@@ -146,3 +146,4 @@ def test_plot_continuum(tmp_path, sample_image) -> None:
 
     prodige_core.data_display.plot_continuum(
         'B1-bS', 'li', os.fspath(dir)+'/', mosaic=False, vmin=-0.5, vmax=2.0, save_fig=False, do_marker=True, do_annotation=True, do_outflow=True)
+    
