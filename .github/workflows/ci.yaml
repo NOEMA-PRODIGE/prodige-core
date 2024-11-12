@@ -30,10 +30,8 @@ jobs:
 
     - name: Install TeX Live
       if: 'windows' in matrix.config.os.lower()
-      run: |
-        uses: zauguin/install-texlive@v3
+      uses: zauguin/install-texlive@v3
         
-
     - name: Run tests with pytest
       run: |
         pip install pytest pytest-cov
