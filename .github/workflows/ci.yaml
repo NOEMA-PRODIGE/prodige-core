@@ -27,6 +27,13 @@ jobs:
       run: |
         python -m pip install --upgrade pip 
         pip install .
+        
+
+    - name: Install TeX Live
+      if: 'windows' in matrix.config.os.lower()
+      run: |
+        uses: zauguin/install-texlive@v3
+        
 
     - name: Run tests with pytest
       run: |
