@@ -5,7 +5,7 @@ import prodige_core as pcore
 # NOEMA data directory
 data_directory = os.getcwd() + '/'
 
-# name of the region
+# # name of the region
 region = 'L1448N'
 # continuum baseband
 bb = 'li'
@@ -22,11 +22,15 @@ pcore.plot_continuum(region, bb, data_directory, cmap='inferno', mosaic=False,
                      color_nan='0.9', do_marker=True, do_outflow=True,)
 
 
-# name of the region
+# # name of the region
 region = 'HH211'
-# linename
+# # linename
 linename = 'N2Dp_K'
 bb = 'li'
 print('>>>>> ' + region)
 pcore.plot_line_mom0(region, linename, bb, data_directory, mosaic=False,
+                     color_nan='0.9', do_marker=True, do_outflow=True,)
+
+print('>>>>> ' + region)
+pcore.plot_line_vlsr(region, linename, data_directory, mosaic=False,
                      color_nan='0.9', do_marker=True, do_outflow=True,)

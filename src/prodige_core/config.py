@@ -33,3 +33,4 @@ source_filename = "sources.csv"
 distance = 288.0  # pc
 cmap_default = "viridis"
 cmap_mom0_default = 'magma'
+cmap_vlsr_default = 'coolwarm'

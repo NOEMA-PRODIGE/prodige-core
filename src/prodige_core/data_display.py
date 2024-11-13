@@ -18,9 +18,10 @@ from .source_catalogue import (
     get_figsize,
     get_region_center,
     get_outflow_information,
+    get_region_vlsr
 )
 
-from .config import pyplot_params, distance, cmap_default, cmap_mom0_default
+from .config import pyplot_params, distance, cmap_default, cmap_mom0_default, cmap_vlsr_default
 
 # name of the region
 label_col = "black"
@@ -91,6 +92,21 @@ def filename_line_TdV(region: str, linename: str, mosaic: bool = False) -> str:
         datafile = region + "_CD_" + linename + "_TdV.fits"
     else:
         datafile = region + "_CD_" + linename + "_TdV.fits"
+    return datafile
+
+
+def filename_line_vlsr(region: str, linename: str, mosaic: bool = False) -> str:
+    """Function to return the filename of the line centroid velocity.
+    It follows the naming convention of PRODIGE.
+    Parameters:
+    region: name of the region
+    linename: line name (e.g., 'H2CO_l21')
+    mosaic: if True, mosaic data is used. This changes the filename format of the data.
+    """
+    if mosaic:
+        datafile = region + "_CD_" + linename + "_Vlsr.fits"
+    else:
+        datafile = region + "_CD_" + linename + "_Vlsr.fits"
     return datafile
 
 
@@ -426,7 +442,7 @@ def pb_telecope(frequency: u.Hz, telescope: str = "NOEMA") -> u.degree:
     return pb.to(u.degree)
 
 
-def plot_PB(ax: plt.Axes, header: fits.header.Header, ra0: float, dec0: float) -> None:
+def plot_PB(ax: plt.Axes, header: fits.header.Header, ra0: float, dec0: float, color: str = 'white') -> None:
     frequeny = get_frequency(header) * u.GHz
     pb_noema = pb_telecope(frequeny, telescope="NOEMA")
     circ = SphericalCircle(
@@ -434,7 +450,7 @@ def plot_PB(ax: plt.Axes, header: fits.header.Header, ra0: float, dec0: float) -
         pb_noema / 2.0,
         ls=(0, (5, 10)),
         lw=1.0,
-        edgecolor="white",
+        edgecolor=color,
         facecolor="none",
         transform=ax.get_transform("fk5"),
     )
@@ -518,18 +534,7 @@ def plot_continuum(
     )
     if mosaic == False:
         plot_PB(ax, hd_cont, ra0, dec0)
-        # frequeny = get_frequency(hd_cont) * u.GHz
-        # pb_noema = pb_telecope(frequeny, telescope="NOEMA")
-        # circ = SphericalCircle(
-        #     (ra0 * u.deg, dec0 * u.deg),
-        #     pb_noema / 2.0,
-        #     ls=(0, (5, 10)),
-        #     lw=1.0,
-        #     edgecolor="white",
-        #     facecolor="none",
-        #     transform=ax.get_transform("fk5"),
-        # )
-        # ax.add_patch(circ)
+
     # add continuum contour levels
     cont_levels, style_levels, valid_contour = get_contour_params(
         np.nanmax(data_cont), noise_cont)
@@ -585,7 +590,8 @@ def plot_continuum(
     )
     # add colorbar
     cb = fig.colorbar(im, cax=cax)
-    cb.set_label(r"$I_{" + str(wavelength.value) + "}$ mm (mJy\\,beam$^{-1}$)")
+    cb.set_label(r"$I_{" + str(wavelength.value) +
+                 "\\, \\rm mm}$ (mJy\\,beam$^{-1}$)")
     cb.ax.yaxis.set_tick_params(
         color="black", labelcolor="black", direction="out")
     cb.ax.locator_params(nbins=5)
@@ -741,6 +747,173 @@ def plot_line_mom0(
     if save_fig:
         plt.savefig(
             fig_directory + region + "_" + linename + "_TdV.pdf",
+            format="pdf",
+            bbox_inches="tight",
+            pad_inches=0.01,
+        )
+        plt.close()
+
+
+def plot_line_vlsr(
+    region: str,
+    linename: str,
+    data_directory: str,
+    fig_directory: str = "./",
+    cmap: str | None = None,
+    color_nan: str = "0.1",
+    vmin: float = None,
+    vmax: float = None,
+    mosaic: bool = False,
+    do_marker: bool = False,
+    do_outflow: bool = False,
+    do_annotation: bool = True,
+    save_fig: bool = True,
+) -> None:
+    """
+    Function to plot the line centroid velocity data with the sources and outflow orientations.
+    Labels and annotations are added to the plot.
+    Parameters:
+    region: name of the region
+    linename: line name (e.g., 'H2CO_l21')
+    data_directory: directory where the data is stored
+    fig_directory: directory where the figure will be stored
+    cmap: colormap for the plot (default is the one listed in config.py)
+    color_nan: color for NaN values
+    vmin: minimum value for the color scale. If None, it is set to minimum value of the data
+    vmax: maximum value for the color scale. If None, it is set to maximum value of the data
+    if vmin and vmax are not set, the color scale is symmetric around the line center, with a width estimated from the largest from minimum and maximum separation between 5 and 95 percentail and Vlsr value from the source catalogue.
+    mosaic: if True, mosaic data is used. This changes the filename format of the data.
+    do_marker: if True, markers are added to the source positions
+    do_outflow: if True, outflow orientations are added to the plot
+    do_annotation: if True, source names are added to the plot
+    save_fig: if True, the figure is saved to disk
+    """
+    label_col_Vlsr = 'black'
+    if cmap == None:
+        cmap = cmap_vlsr_default
+    # use general plot parameters
+    plt.rcParams.update(pyplot_params)
+    color_map = plt.get_cmap(cmap).copy()
+    color_map.set_bad(color=color_nan)
+    # figure size from dictionary
+    fig_width, fig_height = get_figsize(region)
+    ra0, dec0 = get_region_center(region)
+    v_lsr = get_region_vlsr(region)
+    # load integrated intensity data
+    file_name = filename_line_vlsr(region, linename, mosaic)
+    file_TdV = filename_line_TdV(region, linename, mosaic)
+
+    # load velocity data
+    hdu = load_cutout(data_directory + file_name, source=region, is_hdu=False)
+    data = hdu.data
+    # load integrated intensity data
+    data_TdV, noise_map, hd_TdV = load_line_TdV(
+        data_directory + file_TdV, region
+    )
+    if vmin == None and vmax == None:
+        vmin, vmax = np.nanpercentile(data, [5, 95])
+        delta = np.max([np.abs(vmin-v_lsr), np.abs(vmax-v_lsr)])
+        vmin = v_lsr - delta
+        vmax = v_lsr + delta
+    elif vmax == None:
+        vmax = np.nanmax(data)
+    else:
+        vmin = np.nanmin(data)
+
+    wcs_TdV = WCS(hd_TdV)
+    wcs_Vlsr = WCS(hdu.header)
+
+    # create figure
+    fig = plt.figure(1, figsize=(fig_width, fig_height))
+    ax = plt.subplot(1, 1, 1, projection=wcs_Vlsr)
+    # plot continuum in color
+    im = ax.imshow(
+        data,
+        origin="lower",
+        interpolation="None",
+        cmap=color_map,
+        alpha=1.0,
+        transform=ax.get_transform(wcs_Vlsr),
+        vmin=vmin,
+        vmax=vmax,
+    )
+    if mosaic == False:
+        plot_PB(ax, hd_TdV, ra0, dec0, color=label_col_Vlsr)
+    cont_levels, style_levels, valid_contour = get_contour_params(
+        np.nanmax(data_TdV), noise_map)
+
+    if valid_contour:
+        ax.contour(
+            data_TdV,
+            colors="white",
+            alpha=1.0,
+            levels=cont_levels,
+            linestyles=style_levels,
+            linewidths=0.75,
+            transform=ax.get_transform(wcs_TdV),
+        )
+
+        ax.contour(
+            data_TdV,
+            colors="black",
+            alpha=1.0,
+            levels=cont_levels,
+            linestyles=style_levels,
+            linewidths=0.35,
+            transform=ax.get_transform(wcs_TdV),
+        )
+
+    # annotate source names
+    ax.autoscale(enable=False)
+    if do_annotation == True:
+        annotate_sources(
+            ax,
+            wcs_TdV,
+            color="white",
+            color_back="black",
+            fontsize=10,
+            marker=do_marker,
+            label=True,
+            label_offset=4.0 * u.arcsec,
+            connect_line=True,
+        )
+
+    # add outflow orientations
+    if do_outflow:
+        annotate_outflow(ax, wcs_TdV, arrow_width=2.0)
+    prodige_style(ax)
+
+   # Get coordinates for colorbar
+    cax = fig.add_axes(
+        [
+            ax.get_position().x1 + 0.005,
+            ax.get_position().y0,
+            0.025,
+            ax.get_position().height,
+        ]
+    )
+    # add colorbar
+    cb = fig.colorbar(im, cax=cax)
+    # cb.set_label(r"$V_{LSR}$ (km \\,s$^{-1}$)")
+    cb.ax.yaxis.set_tick_params(
+        color="black", labelcolor="black", direction="out")
+    cb.ax.locator_params(nbins=5)
+
+    # cb.locator = MultipleLocator(10.0)
+    cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.1f}"))
+    # add linear scale bar (1000 au)
+    length = (1e3 * u.au / (distance * u.pc)
+              ).to(u.deg, u.dimensionless_angles())
+    add_scalebar(ax, length, label=r"1\,000 au",
+                 color=label_col_Vlsr, corner="bottom right")
+    # add beam
+    add_beam(
+        ax, header=hd_TdV, frame=False, pad=0.2, color=label_col_Vlsr, corner="bottom left"
+    )
+    # save plot
+    if save_fig:
+        fig.savefig(
+            fig_directory + region + "_" + linename + "_Vlsr.pdf",
             format="pdf",
             bbox_inches="tight",
             pad_inches=0.01,

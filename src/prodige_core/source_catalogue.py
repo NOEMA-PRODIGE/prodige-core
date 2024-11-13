@@ -377,6 +377,17 @@ def get_region_names() -> list[str]:
     return list(region_dic)
 
 
+def get_region_vlsr(source: str) -> float:
+    """
+    Convenience function to get the vlsr for a given source.
+    """
+    source_name, _, _, _, vlsr_source, _, _ = load_sources_table()
+    idx = np.where(source_name == source)
+    if len(idx) == 0:
+        raise ValueError("Source not found in the source table")
+    return vlsr_source[idx][0]
+
+
 def get_outflow_information() -> (
     tuple[list[str], list[str], list[str], np.ndarray, np.ndarray]
 ):
