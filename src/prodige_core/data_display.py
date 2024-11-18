@@ -207,27 +207,64 @@ def get_wavelength(header: fits.header.Header) -> float:
     return np.around(wavelength, decimals=1)  # mm
 
 
-def prodige_style(ax: plt.Axes) -> None:
+def prodige_style(ax: plt.Axes, do_offsets: bool = False, center_coord=None) -> None:
     """
     Setting a common style for the plots. This includes axis labels, tick labels, and minor ticks.
     Pararameters:
     ax: axis object.
     """
     # plot properties
-    RA = ax.coords[0]
-    DEC = ax.coords[1]
-    RA.set_axislabel(r"$\alpha$ (J2000)", minpad=0.7)
-    DEC.set_major_formatter("dd:mm:ss")
-    RA.set_major_formatter("hh:mm:ss.s")
-    DEC.set_axislabel(r"$\delta$ (J2000)", minpad=0.8)
-    DEC.set_ticklabel(rotation=90.0, color="black", exclude_overlapping=True)
-    RA.set_ticklabel(color="black", exclude_overlapping=True)
-    DEC.set_ticks(spacing=10 * u.arcsec, color="black")
-    RA.set_ticks(spacing=1.0 * 15 * u.arcsec, color="black")
-    RA.display_minor_ticks(True)
-    DEC.display_minor_ticks(True)
-    DEC.set_minor_frequency(5)
-    RA.set_minor_frequency(5)
+    if do_offsets == False:
+        RA = ax.coords[0]
+        DEC = ax.coords[1]
+        RA.set_axislabel(r"$\alpha$ (J2000)", minpad=0.7)
+        DEC.set_major_formatter("dd:mm:ss")
+        RA.set_major_formatter("hh:mm:ss.s")
+        DEC.set_axislabel(r"$\delta$ (J2000)", minpad=0.8)
+        DEC.set_ticklabel(rotation=90.0, color="black",
+                          exclude_overlapping=True)
+        RA.set_ticklabel(color="black", exclude_overlapping=True)
+        DEC.set_ticks(spacing=10 * u.arcsec, color="black")
+        RA.set_ticks(spacing=1.0 * 15 * u.arcsec, color="black")
+        RA.display_minor_ticks(True)
+        DEC.display_minor_ticks(True)
+        DEC.set_minor_frequency(5)
+        RA.set_minor_frequency(5)
+    else:
+        if center_coord is None:
+            raise ValueError("Center coordinate is not defined.")
+        # Using implementation from
+        # https://community.openastronomy.org/t/maps-in-relative-coordinates-with-wcsaxes/186/4
+        RA = ax.coords[0]
+        DEC = ax.coords[1]
+        RA.set_ticks_visible(False)
+        RA.set_ticklabel_visible(False)
+        DEC.set_ticks_visible(False)
+        DEC.set_ticklabel_visible(False)
+        RA.set_axislabel("")
+        DEC.set_axislabel("")
+
+        off_frame = center_coord.skyoffset_frame()
+        overlay_coord = ax.get_coords_overlay(off_frame)
+        ra_offset = overlay_coord["lon"]
+        dec_offset = overlay_coord["lat"]
+        ra_offset.set_axislabel("R.A. offset")
+        dec_offset.set_axislabel("Dec. offset")
+        ra_offset.set_major_formatter("s")
+        dec_offset.set_major_formatter("s")
+        ra_offset.set_ticks_position("bt")
+        ra_offset.set_ticklabel_position("b")
+        dec_offset.set_ticks_position("lr")
+        dec_offset.set_ticklabel_position("l")
+        ra_offset.set_axislabel_position("b")
+        dec_offset.set_axislabel_position("l")
+        ra_offset.coord_wrap = 180*u.deg  # avoid wrapping
+        ra_offset.display_minor_ticks(True)
+        dec_offset.display_minor_ticks(True)
+        dec_offset.set_minor_frequency(5)
+        ra_offset.set_minor_frequency(5)
+        dec_offset.set_ticks(spacing=15 * u.arcsec, color="black")
+        ra_offset.set_ticks(spacing=15 * u.arcsec, color="black")
 
 
 def annotate_sources(
@@ -767,6 +804,7 @@ def plot_line_vlsr(
     do_marker: bool = False,
     do_outflow: bool = False,
     do_annotation: bool = True,
+    do_offsets: bool = False,
     save_fig: bool = True,
 ) -> None:
     """
@@ -786,6 +824,7 @@ def plot_line_vlsr(
     do_marker: if True, markers are added to the source positions
     do_outflow: if True, outflow orientations are added to the plot
     do_annotation: if True, source names are added to the plot
+    do_offsets: if True, the axes are displayed in offsets
     save_fig: if True, the figure is saved to disk
     """
     label_col_Vlsr = 'black'
@@ -839,6 +878,7 @@ def plot_line_vlsr(
     )
     if mosaic == False:
         plot_PB(ax, hd_TdV, ra0, dec0, color=label_col_Vlsr)
+    #
     cont_levels, style_levels, valid_contour = get_contour_params(
         np.nanmax(data_TdV), noise_map)
 
@@ -881,7 +921,9 @@ def plot_line_vlsr(
     # add outflow orientations
     if do_outflow:
         annotate_outflow(ax, wcs_TdV, arrow_width=2.0)
-    prodige_style(ax)
+    # style
+    prodige_style(ax, do_offsets=do_offsets, center_coord=SkyCoord(
+        ra=ra0, dec=dec0, unit=(u.deg, u.deg)))
 
    # Get coordinates for colorbar
     cax = fig.add_axes(
