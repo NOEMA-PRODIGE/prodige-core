@@ -34,7 +34,8 @@ def load_sources_table() -> tuple[
     # load table containing sources within FoV
     # sources within FOV
     data_file = files("prodige_core").joinpath(source_filename)
-    sources_tab = np.loadtxt(data_file, dtype="U", delimiter=",", comments="#")
+    sources_tab = np.loadtxt(data_file, dtype="U",
+                             delimiter=",", comments="#", skiprows=1)
     # source name
     name_list = sources_tab[:, 0]
     # source RA
