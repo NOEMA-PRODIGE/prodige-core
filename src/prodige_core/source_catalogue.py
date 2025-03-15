@@ -34,7 +34,8 @@ def load_sources_table() -> tuple[
     # load table containing sources within FoV
     # sources within FOV
     data_file = files("prodige_core").joinpath(source_filename)
-    sources_tab = np.loadtxt(data_file, dtype="U", delimiter=",", comments="#")
+    sources_tab = np.loadtxt(data_file, dtype="U",
+                             delimiter=",", comments="#", skiprows=1)
     # source name
     name_list = sources_tab[:, 0]
     # source RA
@@ -382,9 +383,11 @@ def get_region_vlsr(source: str) -> float:
     Convenience function to get the vlsr for a given source.
     """
     source_name, _, _, _, vlsr_source, _, _ = load_sources_table()
+    validate_source_id(source)
     idx = np.where(source_name == source)
-    if len(idx) == 0:
-        raise ValueError("Source not found in the source table")
+    # if len(idx) == 0:
+    #     raise ValueError("Source not found in the source table")
+    # print(idx, source_name[idx])
     return vlsr_source[idx][0]
 
 

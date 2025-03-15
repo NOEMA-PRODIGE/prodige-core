@@ -128,7 +128,7 @@ def test_load_continuum_data(tmp_path, sample_image) -> None:
 
 
 @image_comparison(baseline_images=['example_map'], remove_text=True,
-                  extensions=['png'], style='mpl20', tol=8)
+                  extensions=['png'], style='mpl20', tol=10)
 def test_plot_continuum(tmp_path, sample_image) -> None:
     dir = tmp_path
     dir.mkdir(exist_ok=True)

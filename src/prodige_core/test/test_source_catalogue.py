@@ -69,3 +69,14 @@ def test_get_figsize() -> None:
     # Default case should be 6.0 x 6.0
     fig_size = prodige_core.source_catalogue.get_figsize("Per-emb-2")
     assert fig_size == (6.0, 6.0)
+
+@pytest.mark.parametrize("source_id, expected_raise",
+                         [
+                             ("test", pytest.raises(ValueError)),
+                             ("B1-bS", does_not_raise()),],)
+def test_get_region_vlsr(source_id, expected_raise) -> None:
+    v_lsr = prodige_core.source_catalogue.get_region_vlsr("B1-bS")
+    assert v_lsr == 6.75
+    with expected_raise:
+        prodige_core.source_catalogue.get_region_vlsr(
+            source_id) is not None

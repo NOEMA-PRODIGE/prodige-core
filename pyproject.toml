@@ -7,7 +7,9 @@ name = "prodige_core"
 dependencies = [
   "importlib-resources;python_version<'3.9'",
   "astropy>=5.0",
-  "matplotlib>=3.6"
+  "matplotlib>=3.6",
+  "radio-beam>=0.3",
+  "spectral-cube>=0.5.0",
 ]
 requires-python = ">=3.7"
 authors = [
