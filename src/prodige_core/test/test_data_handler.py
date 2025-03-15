@@ -1,10 +1,11 @@
 import os
 import numpy as np
-import pytest
+
 from astropy.io import fits
 from spectral_cube import SpectralCube
 import prodige_core.data_handler
 
+import pytest
 
 @pytest.fixture
 def fits_files(tmp_path):
@@ -16,6 +17,9 @@ def fits_files(tmp_path):
         hdu.header['CTYPE1'] = 'RA---TAN'
         hdu.header['CTYPE2'] = 'DEC--TAN'
         hdu.header['CTYPE3'] = 'VRAD'
+        hdu.header['CUNIT1'] = 'deg'
+        hdu.header['CUNIT2'] = 'deg'
+        hdu.header['CUNIT3'] = 'km/s'
         hdu.header['CRPIX1'] = 20
         hdu.header['CRPIX2'] = 20
         hdu.header['CRPIX3'] = 5
@@ -70,6 +74,9 @@ def template_file(tmp_path):
     hdu.header['CTYPE1'] = 'RA---TAN'
     hdu.header['CTYPE2'] = 'DEC--TAN'
     hdu.header['CTYPE3'] = 'VRAD'
+    hdu.header['CUNIT1'] = 'deg'
+    hdu.header['CUNIT2'] = 'deg'
+    hdu.header['CUNIT3'] = 'km/s'
     hdu.header['CRPIX1'] = 20
     hdu.header['CRPIX2'] = 20
     hdu.header['CRPIX3'] = 5
@@ -86,21 +93,21 @@ def template_file(tmp_path):
     return str(filename)
 
 
-# def test_regrid_cubes_from_files(fits_files, template_file):
-#     prodige_core.data_handler.regrid_cubes_from_files(
-#         fits_files, fits_files[-1])
-#     for f in fits_files:
-#         regridded_file = f.replace('.fits', '_regrid.fits')
-#         assert os.path.exists(regridded_file)
+def test_regrid_cubes_from_files(fits_files, template_file):
+    prodige_core.data_handler.regrid_cubes_from_files(
+        fits_files, fits_files[-1])
+    for f in fits_files:
+        regridded_file = f.replace('.fits', '_regrid.fits')
+        assert os.path.exists(regridded_file)
 
-#         original_cube = SpectralCube.read(f)
-#         regridded_cube = SpectralCube.read(regridded_file)
+        original_cube = SpectralCube.read(f)
+        regridded_cube = SpectralCube.read(regridded_file)
 
-#         assert regridded_cube.shape == original_cube.shape
-#         assert regridded_cube.header['CRVAL1'] == fits.getheader(template_file)[
-#             'CRVAL1']
-#         assert regridded_cube.header['CRVAL2'] == fits.getheader(template_file)[
-#             'CRVAL2']
+        assert regridded_cube.shape == original_cube.shape
+        assert regridded_cube.header['CRVAL1'] == fits.getheader(template_file)[
+            'CRVAL1']
+        assert regridded_cube.header['CRVAL2'] == fits.getheader(template_file)[
+            'CRVAL2']
 
 
 def test_regrid_cubes_from_files_invalid_extension(fits_files, template_file):

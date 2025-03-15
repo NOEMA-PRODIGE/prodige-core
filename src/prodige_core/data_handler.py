@@ -78,7 +78,7 @@ def regrid_cubes_from_files(fits_files: list, template_file: str, suffix: str = 
     """
     # check that all files are FITS files and are present in the path
     check_fits_files(fits_files)
-    check_fits_files(template_file)
+    check_fits_files([template_file])
 
     # load the template cube
     template_hd = fits.getheader(template_file)
