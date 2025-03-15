@@ -383,9 +383,11 @@ def get_region_vlsr(source: str) -> float:
     Convenience function to get the vlsr for a given source.
     """
     source_name, _, _, _, vlsr_source, _, _ = load_sources_table()
+    validate_source_id(source)
     idx = np.where(source_name == source)
-    if len(idx) == 0:
-        raise ValueError("Source not found in the source table")
+    # if len(idx) == 0:
+    #     raise ValueError("Source not found in the source table")
+    # print(idx, source_name[idx])
     return vlsr_source[idx][0]
 
 
