@@ -19,7 +19,7 @@ To install the latest stable release, you can type::
 
 
 Developer version
-------------
+-----------------
 Install by cloning locally the repository on `GitHub <https://github.com/NOEMA-PRODIGE/prodige-core>`_.
 If you want to install the latest developer version of the ``prodige-core`` code, you
 can do so from the git repository::

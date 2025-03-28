@@ -8,3 +8,4 @@ from .data_display import plot_continuum, plot_line_mom0, plot_line_vlsr, get_co
 from .source_catalogue import load_sources_table
 
 from .config import pyplot_params
+from ._version import __version__
