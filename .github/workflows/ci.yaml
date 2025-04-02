@@ -31,8 +31,8 @@ jobs:
           pip install .
 
       - name: Install LaTeX
+        uses: actions/checkout@v4
         uses: r-lib/actions/setup-tinytex@v2
-        run: tlmgr --version
 
       - name: Run tests with pytest
         # pytest --pyargs prodige_core --cov=prodige_core --import-mode=importlib --junitxml=pytest.xml  --cov-report=xml | tee pytest-coverage.txt
