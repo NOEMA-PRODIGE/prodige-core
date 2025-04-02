@@ -32,6 +32,8 @@ jobs:
 
       - name: Install LaTeX
         uses: r-lib/actions/setup-tinytex@v2
+        run: |
+          tlmgr install type1cm
 
       - name: Run tests with pytest
         # pytest --pyargs prodige_core --cov=prodige_core --import-mode=importlib --junitxml=pytest.xml  --cov-report=xml | tee pytest-coverage.txt
