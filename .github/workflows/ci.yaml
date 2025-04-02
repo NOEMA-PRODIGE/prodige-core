@@ -31,7 +31,6 @@ jobs:
           pip install .
 
       - name: Install LaTeX
-        uses: actions/checkout@v4
         uses: r-lib/actions/setup-tinytex@v2
 
       - name: Run tests with pytest
