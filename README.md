@@ -1,7 +1,8 @@
 # PRODIGE-core
+
 ![PyPI - License](https://img.shields.io/pypi/l/prodige_core?color=green)
 ![PyPI - Version](https://img.shields.io/pypi/v/prodige_core)
-[![codecov](https://codecov.io/gh/jpinedaf/velocity_tools/graph/badge.svg?token=4JFPKTRSX0)](https://codecov.io/gh/jpinedaf/prodige_core)
+[![codecov](https://codecov.io/gh/NOEMA-PRODIGE/prodige-core/graph/badge.svg?token=OIQJYPIUO8)](https://codecov.io/gh/NOEMA-PRODIGE/prodige-core)
 
 Collection of functions for a more common analysis/display of the [PRODIGE](NOEMA-PRODIGE.github.io) program.
 
@@ -25,3 +26,4 @@ This is developed by:
 - matplotlib (>=3.6)
 - radio-beam (>=0.3)
 - spectral-cube (>=0.5.0)
+- reproject
