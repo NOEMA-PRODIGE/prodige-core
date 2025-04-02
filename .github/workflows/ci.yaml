@@ -11,7 +11,7 @@ jobs:
         # os: [ubuntu-latest, windows-latest, macos-latest]
         # Cannot use windows-latest, because LaTeX is missing
         os: [ubuntu-latest, macos-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12-dev"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13-dev"]
     
     name: Test 
     runs-on: ${{ matrix.os }}
@@ -31,6 +31,13 @@ jobs:
         pip install .
 
     - name: Run tests with pytest
+    # pytest --pyargs prodige_core --cov=prodige_core --import-mode=importlib --junitxml=pytest.xml  --cov-report=xml | tee pytest-coverage.txt
       run: |
         pip install pytest pytest-cov
-        pytest --pyargs prodige_core --cov=prodige_core --import-mode=importlib --junitxml=pytest.xml  --cov-report=xml | tee pytest-coverage.txt
+        pytest --cov --cov-branch --cov-report=xml
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+

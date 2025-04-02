@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+_version.py
+
 # matplotlib test images
 result_images
 
