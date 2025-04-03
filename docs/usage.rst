@@ -1,5 +1,10 @@
 Usage
 =====
+In the following sections, we look at how to manipulate spectral cubes, 
+including how to convolve and match cubes, 
+and how to make publication ready figures.
+
+
 
 
 Data processing

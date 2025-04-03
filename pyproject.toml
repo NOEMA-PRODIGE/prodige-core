@@ -10,6 +10,7 @@ dependencies = [
   "matplotlib>=3.6",
   "radio-beam>=0.3",
   "spectral-cube>=0.5.0",
+  "reproject",
 ]
 requires-python = ">=3.7"
 authors = [
@@ -22,8 +23,27 @@ maintainers = [
 description = "Package to be used in PRODIGE analysis or publications."
 readme = "README.md"
 license = {text = "MIT License"}
-
 dynamic = ["version"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Astronomy",
+  "License :: OSI Approved :: MIT License",
+  "Natural Language :: English",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+
+[project.urls]
+Homepage = "https://noema-prodige.github.io/"
+Documentation = "https://prodige-core.readthedocs.io/"
+Repository = "https://github.com/NOEMA-PRODIGE/prodige-core"
 
 [tool.setuptools_scm]
 version_file = "src/prodige_core/_version.py"
@@ -44,7 +64,6 @@ source = ["prodige_core"]
 pythonpath = "src/"
 addopts = [
     "--import-mode=importlib"#,
-    # "--cov=prodige_core --cov-report html"
     ]
 
 [tool.coverage.report]
@@ -58,6 +77,3 @@ ignore_errors = true
 
 [tool.coverage.html]
 directory = "coverage_html_report"
-
-[project.urls]
-Homepage = "https://github.com/NOEMA-PRODIGE/prodige-core"
