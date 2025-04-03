@@ -2,7 +2,9 @@
 
 ![PyPI - License](https://img.shields.io/pypi/l/prodige_core?color=green)
 ![PyPI - Version](https://img.shields.io/pypi/v/prodige_core)
+![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FNOEMA-PRODIGE%2Fprodige-core%2Fmaster%2Fpyproject.toml)
 [![codecov](https://codecov.io/gh/NOEMA-PRODIGE/prodige-core/graph/badge.svg?token=OIQJYPIUO8)](https://codecov.io/gh/NOEMA-PRODIGE/prodige-core)
+
 
 Collection of functions for a more common analysis/display of the [PRODIGE](NOEMA-PRODIGE.github.io) program.
 
@@ -23,7 +25,8 @@ This is developed by:
 ---
 
 - astropy (>=5.0)
-- matplotlib (>=3.6)
-- radio-beam (>=0.3)
 - spectral-cube (>=0.5.0)
+- radio-beam (>=0.3)
+- matplotlib (>=3.6)
+- reproject
 - reproject
