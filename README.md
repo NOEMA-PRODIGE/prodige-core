@@ -29,4 +29,3 @@ This is developed by:
 - radio-beam (>=0.3)
 - matplotlib (>=3.6)
 - reproject
-- reproject
