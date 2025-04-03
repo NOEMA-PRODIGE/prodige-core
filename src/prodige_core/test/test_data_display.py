@@ -102,11 +102,37 @@ def test_filename_continuum() -> None:
     )
 
 
+def test_filename_line_TdV() -> None:
+    assert (
+        prodige_core.data_display.filename_line_TdV(
+            "test", "line", mosaic=True)
+        == "test_CD_line_TdV.fits"
+    )
+    assert (
+        prodige_core.data_display.filename_line_TdV(
+            "test", "line", mosaic=False)
+        == "test_CD_line_TdV.fits"
+    )
+
+
+def test_filename_line_vlsr() -> None:
+    assert (
+        prodige_core.data_display.filename_line_vlsr(
+            "test", "line", mosaic=True)
+        == "test_CD_line_Vlsr.fits"
+    )
+    assert (
+        prodige_core.data_display.filename_line_vlsr(
+            "test", "line", mosaic=False)
+        == "test_CD_line_Vlsr.fits"
+    )
+
+
 def test_load_continuum_data(tmp_path, sample_image) -> None:
     dir = tmp_path / "sub"
     dir.mkdir()
     file_link = os.path.join(os.fspath(dir), "test_image.fits")
-    file_link2 = os.path.join(os.fspath(dir), "test_image2.fits")
+
     hdu = sample_image(is_2d=True)
     rms = 0.1
     data = np.random.normal(0, rms, hdu.data.shape)  # (501, 501))
@@ -120,11 +146,43 @@ def test_load_continuum_data(tmp_path, sample_image) -> None:
     assert rms == pytest.approx(rms_out, rel=0.05)
 
     hdu.header["BUNIT"] = "Jy/beam"
-    hdu.writeto(file_link2, overwrite=True)
-    _, rms_out2, _ = prodige_core.data_display.load_continuum_data(
-        file_link2, "B1-bS")
+    hdu.writeto(file_link, overwrite=True)
+    _, rms_out, hd = prodige_core.data_display.load_continuum_data(
+        file_link, "B1-bS")
     assert (hd['BUNIT'].casefold() == 'mJy/beam'.casefold())
-    assert rms * 1e3 == pytest.approx(rms_out2, rel=0.05)
+    assert rms * 1e3 == pytest.approx(rms_out, rel=0.05)
+
+
+def test_load_line_TdV(tmp_path, sample_image) -> None:
+    dir = tmp_path / "sub"
+    dir.mkdir()
+    file_link = os.path.join(os.fspath(dir), "test_noise.fits")
+
+    hdu = sample_image(is_2d=True)
+    rms = 0.1
+    data = np.random.normal(0, rms, hdu.data.shape)  # (501, 501))
+    hdu.data = data
+    hdu.header["BUNIT"] = "mJy/beam km/s"
+    hdu.writeto(file_link, overwrite=True)
+    _, rms_out, hd = prodige_core.data_display.load_line_TdV(
+        file_link, "B1-bS")
+    assert (hd["NAXIS1"] == 200) and (hd["NAXIS2"] == 200)
+    assert (hd['BUNIT'].casefold() == 'mJy/beam km/s'.casefold())
+    assert rms == pytest.approx(rms_out, rel=0.05)
+
+    hdu.header["BUNIT"] = "Jy/beam km/s"
+    hdu.writeto(file_link, overwrite=True)
+    _, rms_out, hd = prodige_core.data_display.load_line_TdV(
+        file_link, "B1-bS")
+    assert (hd['BUNIT'].casefold() == 'mJy/beam km/s'.casefold())
+    assert rms * 1e3 == pytest.approx(rms_out, rel=0.05)
+
+    hdu.header["BUNIT"] = "K km/s"
+    hdu.writeto(file_link, overwrite=True)
+    _, rms_out, hd = prodige_core.data_display.load_line_TdV(
+        file_link, "B1-bS")
+    assert (hd['BUNIT'].casefold() == 'K km/s'.casefold())
+    assert rms == pytest.approx(rms_out, rel=0.05)
 
 
 @image_comparison(baseline_images=['example_map'], remove_text=True,
@@ -146,4 +204,3 @@ def test_plot_continuum(tmp_path, sample_image) -> None:
 
     prodige_core.data_display.plot_continuum(
         'B1-bS', 'li', os.fspath(dir)+'/', mosaic=False, vmin=-0.5, vmax=2.0, save_fig=False, do_marker=True, do_annotation=True, do_outflow=True)
-    
