@@ -1,6 +1,8 @@
 # PRODIGE-core
+
 ![PyPI - License](https://img.shields.io/pypi/l/prodige_core?color=green)
 ![PyPI - Version](https://img.shields.io/pypi/v/prodige_core)
+[![codecov](https://codecov.io/gh/NOEMA-PRODIGE/prodige-core/graph/badge.svg?token=OIQJYPIUO8)](https://codecov.io/gh/NOEMA-PRODIGE/prodige-core)
 ![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fjpinedaf%2Fvelocity_tools%2Fmaster%2Fpyproject.toml)
 [![codecov](https://codecov.io/gh/NOEMA-PRODIGE/prodige-core/graph/badge.svg?token=OIQJYPIUO8)](https://codecov.io/gh/NOEMA-PRODIGE/prodige-core)
 
@@ -27,4 +29,5 @@ This is developed by:
 - spectral-cube (>=0.5.0)
 - radio-beam (>=0.3)
 - matplotlib (>=3.6)
+- reproject
 - reproject

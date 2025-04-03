@@ -11,17 +11,19 @@ dependencies = [
   "radio-beam>=0.3",
   "spectral-cube>=0.5.0",
   "reproject",
+  "reproject",
 ]
+
 requires-python = ">=3.7"
 authors = [
-  {name = "Jaime E. Pineda", email = "jpineda@mpe.mpg.de"},
-  {name = "Caroline Gieser"},
+  { name = "Jaime E. Pineda", email = "jpineda@mpe.mpg.de" },
+  { name = "Caroline Gieser" },
 ]
-maintainers = [
-  {name = "Jaime E. Pineda", email = "jpineda@mpe.mpg.de"},
-]
+maintainers = [{ name = "Jaime E. Pineda", email = "jpineda@mpe.mpg.de" }]
 description = "Package to be used in PRODIGE analysis or publications."
 readme = "README.md"
+license = { text = "MIT License" }
+
 license = {text = "MIT License"}
 dynamic = ["version"]
 classifiers = [
@@ -50,7 +52,7 @@ version_file = "src/prodige_core/_version.py"
 
 [tool.setuptools]
 include-package-data = true
-package-dir = {"" = "src"}
+package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -68,11 +70,11 @@ addopts = [
 
 [tool.coverage.report]
 exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "if self.debug",
-    "if __name__ == .__main__.:"
-    ]
+  "pragma: no cover",
+  "def __repr__",
+  "if self.debug",
+  "if __name__ == .__main__.:",
+]
 ignore_errors = true
 
 [tool.coverage.html]

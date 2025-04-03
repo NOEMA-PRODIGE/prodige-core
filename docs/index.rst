@@ -1,11 +1,13 @@
 Welcome to Prodige-core's documentation!
 ========================================
 
-Collection of functions for a more common analysis/display of the `PRODIGE <http://NOEMA-PRODIGE.github.io>`_ program.
+Collection of functions for a more common analysis/display of 
+the `PRODIGE <http://NOEMA-PRODIGE.github.io>`_ program.
 
 This includes:
-* simple to use commands to make publication ready figures
-* Convenience function to handle the data (convolution and regridding)
+
+     * Convenience functions to handle the data (convolution and regridding).
+     * Simple to use commands to make publication ready figures.
 
 .. toctree::
      :maxdepth: 2
