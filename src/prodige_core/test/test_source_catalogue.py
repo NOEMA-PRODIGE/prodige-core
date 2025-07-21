@@ -2,8 +2,6 @@ from __future__ import annotations
 import numpy as np
 from contextlib import nullcontext as does_not_raise
 
-from astropy import units as u
-from astropy.io import fits
 import prodige_core.source_catalogue
 from prodige_core.source_catalogue import region_dic
 import pytest

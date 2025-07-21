@@ -3,11 +3,7 @@ import numpy as np
 import os
 
 import prodige_core.data_display
-from astropy.io import fits
 from astropy import units as u
-from astropy.io import fits
-from astropy.wcs import WCS
-import matplotlib.pyplot as plt
 from matplotlib.testing.decorators import image_comparison
 
 import pytest
@@ -135,13 +131,13 @@ def test_load_continuum_data(tmp_path, sample_image) -> None:
     hdu.writeto(file_link, overwrite=True)
     _, rms_out, hd = prodige_core.data_display.load_continuum_data(file_link, "B1-bS")
     assert (hd["NAXIS1"] == 200) and (hd["NAXIS2"] == 200)
-    assert hd["BUNIT"].casefold() == "mJy/beam".casefold()
+    assert str(hd["BUNIT"]).casefold() == "mJy/beam".casefold()
     assert rms == pytest.approx(rms_out, rel=0.05)
 
     hdu.header["BUNIT"] = "Jy/beam"
     hdu.writeto(file_link, overwrite=True)
     _, rms_out, hd = prodige_core.data_display.load_continuum_data(file_link, "B1-bS")
-    assert hd["BUNIT"].casefold() == "mJy/beam".casefold()
+    assert str(hd["BUNIT"]).casefold() == "mJy/beam".casefold()
     assert rms * 1e3 == pytest.approx(rms_out, rel=0.05)
 
 
@@ -158,19 +154,19 @@ def test_load_line_TdV(tmp_path, sample_image) -> None:
     hdu.writeto(file_link, overwrite=True)
     _, rms_out, hd = prodige_core.data_display.load_line_TdV(file_link, "B1-bS")
     assert (hd["NAXIS1"] == 200) and (hd["NAXIS2"] == 200)
-    assert hd["BUNIT"].casefold() == "mJy/beam km/s".casefold()
+    assert str(hd["BUNIT"]).casefold() == "mJy/beam km/s".casefold()
     assert rms == pytest.approx(rms_out, rel=0.05)
 
     hdu.header["BUNIT"] = "Jy/beam km/s"
     hdu.writeto(file_link, overwrite=True)
     _, rms_out, hd = prodige_core.data_display.load_line_TdV(file_link, "B1-bS")
-    assert hd["BUNIT"].casefold() == "mJy/beam km/s".casefold()
+    assert str(hd["BUNIT"]).casefold() == "mJy/beam km/s".casefold()
     assert rms * 1e3 == pytest.approx(rms_out, rel=0.05)
 
     hdu.header["BUNIT"] = "K km/s"
     hdu.writeto(file_link, overwrite=True)
     _, rms_out, hd = prodige_core.data_display.load_line_TdV(file_link, "B1-bS")
-    assert hd["BUNIT"].casefold() == "K km/s".casefold()
+    assert str(hd["BUNIT"]).casefold() == "K km/s".casefold()
     assert rms == pytest.approx(rms_out, rel=0.05)
 
 

@@ -11,9 +11,7 @@ from astropy.visualization.wcsaxes import WCSAxes
 from astropy.visualization.wcsaxes import SphericalCircle, add_beam, add_scalebar
 from astropy.stats import sigma_clipped_stats
 
-# import matplotlib.figure
 import matplotlib.pyplot as plt
-import matplotlib.axes
 from matplotlib import ticker
 import matplotlib.patheffects as PathEffects
 from typing import cast

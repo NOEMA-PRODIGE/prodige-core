@@ -9,10 +9,7 @@ from astropy.io.fits import PrimaryHDU
 from astropy.wcs import WCS
 from typing import cast
 
-try:
-    from importlib.resources import files
-except ImportError:
-    from importlib_resources import files
+from importlib.resources import files
 
 from .config import source_filename
 

@@ -13,7 +13,7 @@ dependencies = [
   "reproject",
 ]
 
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 authors = [
   { name = "Jaime E. Pineda", email = "jpineda@mpe.mpg.de" },
   { name = "Caroline Gieser" },
@@ -30,13 +30,11 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Natural Language :: English",
   "Topic :: Software Development :: Libraries :: Python Modules",
-  "Programming Language :: Python :: 3.7",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
 ]
 
 [project.urls]
