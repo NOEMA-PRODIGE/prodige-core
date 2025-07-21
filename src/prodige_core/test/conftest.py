@@ -1,5 +1,6 @@
 from __future__ import annotations
 import pytest
+from typing import Callable
 import numpy as np
 from astropy.io import fits
 import prodige_core.source_catalogue
@@ -7,7 +8,7 @@ from astropy import units as u
 
 
 @pytest.fixture
-def sample_image() -> fits.PrimaryHDU:
+def sample_image() -> Callable[[bool], fits.PrimaryHDU]:
     def make_sample_image(is_2d: bool = True) -> fits.PrimaryHDU:
         if is_2d:
             data = np.ones((501, 501))
@@ -19,18 +20,19 @@ def sample_image() -> fits.PrimaryHDU:
         hdu.header["CRVAL2"] = dec0
         hdu.header["CRPIX1"] = 251
         hdu.header["CRPIX2"] = 251
-        hdu.header["CDELT1"] = 40.0 * u.arcsec.to(u.deg) / 200
-        hdu.header["CDELT2"] = 40.0 * u.arcsec.to(u.deg) / 200
+        hdu.header["CDELT1"] = 40.0 * u.arcsec.to(u.deg) / 200  # type: ignore
+        hdu.header["CDELT2"] = 40.0 * u.arcsec.to(u.deg) / 200  # type: ignore
         hdu.header["CUNIT1"] = "deg"
         hdu.header["CUNIT2"] = "deg"
         hdu.header["CTYPE1"] = "RA---TAN"
         hdu.header["CTYPE2"] = "DEC--TAN"
         hdu.header["EQUINOX"] = 2000.0
-        hdu.header["RADESYS"] = ("FK5", 'Coordinate system')
+        hdu.header["RADESYS"] = ("FK5", "Coordinate system")
         hdu.header["RESTFREQ"] = (72.78382e9, "Hz")
         hdu.header["BUNIT"] = ("mJy/Beam", "Brightness unit")
-        hdu.header["BMAJ"] = 0.26E-3
-        hdu.header["BMIN"] = 0.16E-3
+        hdu.header["BMAJ"] = 0.26e-3
+        hdu.header["BMIN"] = 0.16e-3
         hdu.header["BPA"] = 22.0
         return hdu
+
     return make_sample_image

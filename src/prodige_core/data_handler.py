@@ -16,18 +16,18 @@ def check_fits_files(fits_files: list) -> None:
         None
     """
     for f in fits_files:
-        if not f.endswith('.fits'):
-            raise ValueError('All files must be FITS files.')
+        if not f.endswith(".fits"):
+            raise ValueError("All files must be FITS files.")
         if not glob.glob(f):
-            raise FileNotFoundError(f'File not found: {f}')
+            raise FileNotFoundError(f"File not found: {f}")
 
     return
 
 
-def common_beam_files(fits_files: list, suffix: str = '_smooth') -> None:
+def common_beam_files(fits_files: list, suffix: str = "_smooth") -> None:
     """
-    Load a list of FITS files, find the common beam using radio_beam. 
-    The smoothed cubes are saved with the suffix '_smooth' added to the original 
+    Load a list of FITS files, find the common beam using radio_beam.
+    The smoothed cubes are saved with the suffix '_smooth' added to the original
     file name and before the '.fits' extension.
 
     Parameters:
@@ -45,27 +45,31 @@ def common_beam_files(fits_files: list, suffix: str = '_smooth') -> None:
     # make list of BMAJ, BMIN, and BPA to create a Beams object
     bmaj_list, bmin_list, bpa_list = [], [], []
     for cube in cubes:
-        bmaj_list.append(cube.header['BMAJ'])
-        bmin_list.append(cube.header['BMIN'])
-        bpa_list.append(cube.header['BPA'])
+        bmaj_list.append(cube.header["BMAJ"])
+        bmin_list.append(cube.header["BMIN"])
+        bpa_list.append(cube.header["BPA"])
 
     my_beams = radio_beam.Beams(
-        major=bmaj_list * u.deg, minor=bmin_list * u.deg, pa=bpa_list * u.deg)
+        major=bmaj_list * u.deg,  # type: ignore
+        minor=bmin_list * u.deg,  # type: ignore
+        pa=bpa_list * u.deg,  # type: ignore
+    )
     common_beam = my_beams.common_beam()
 
     convolved_cubes = [cube.convolve_to(common_beam) for cube in cubes]
     # write out the smoothed cubes
     for i, new_cube in enumerate(convolved_cubes):
-        new_cube.write(fits_files[i].replace(
-            '.fits', f'{suffix}.fits'), overwrite=True)
+        new_cube.write(fits_files[i].replace(".fits", f"{suffix}.fits"), overwrite=True)
 
     return
 
 
-def regrid_cubes_from_files(fits_files: list, template_file: str, suffix: str = '_regrid') -> None:
+def regrid_cubes_from_files(
+    fits_files: list, template_file: str, suffix: str = "_regrid"
+) -> None:
     """
     Load a list of FITS files, regrid them onto a common grid defined by a template file.
-    The regridded cubes are saved with the suffix '_regrid' added to the original 
+    The regridded cubes are saved with the suffix '_regrid' added to the original
     file name and before the '.fits' extension.
 
     Parameters:
@@ -82,11 +86,23 @@ def regrid_cubes_from_files(fits_files: list, template_file: str, suffix: str = 
 
     # load the template cube
     template_hd = fits.getheader(template_file)
-    list_key = ['CRVAL1', 'CRVAL2', 'CDELT1', 'CDELT2', 'CRPIX1', 'CRPIX2',
-                'CTYPE1', 'CTYPE2', 'CUNIT1', 'CUNIT2', 'NAXIS1', 'NAXIS2']
+    list_key = [
+        "CRVAL1",
+        "CRVAL2",
+        "CDELT1",
+        "CDELT2",
+        "CRPIX1",
+        "CRPIX2",
+        "CTYPE1",
+        "CTYPE2",
+        "CUNIT1",
+        "CUNIT2",
+        "NAXIS1",
+        "NAXIS2",
+    ]
     for key in list_key:
         if key not in template_hd:
-            raise KeyError(f'Header key {key} not found in the template file.')
+            raise KeyError(f"Header key {key} not found in the template file.")
     # load all cubes and regrid them
     for f in fits_files:
         cube = SpectralCube.read(f)
@@ -94,7 +110,6 @@ def regrid_cubes_from_files(fits_files: list, template_file: str, suffix: str = 
         for key in list_key:
             target_hd[key] = template_hd[key]
         regridded_cube = cube.reproject(target_hd)
-        regridded_cube.write(
-            f.replace('.fits', f'{suffix}.fits'), overwrite=True)
+        regridded_cube.write(f.replace(".fits", f"{suffix}.fits"), overwrite=True)
 
     return

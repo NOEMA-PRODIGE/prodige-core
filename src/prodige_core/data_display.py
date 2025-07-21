@@ -1,34 +1,45 @@
-from __future__ import annotations
 import numpy as np
+from numpy.typing import NDArray
+from typing import cast
 
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astropy.io import fits
+from astropy.io.fits import Header
 from astropy.wcs import WCS
+from astropy.visualization.wcsaxes import WCSAxes
 from astropy.visualization.wcsaxes import SphericalCircle, add_beam, add_scalebar
 from astropy.stats import sigma_clipped_stats
 
+# import matplotlib.figure
 import matplotlib.pyplot as plt
+import matplotlib.axes
 from matplotlib import ticker
 import matplotlib.patheffects as PathEffects
-
+from typing import cast
 from .source_catalogue import (
     load_sources_table,
     load_cutout,
     get_figsize,
     get_region_center,
     get_outflow_information,
-    get_region_vlsr
+    get_region_vlsr,
 )
 
-from .config import pyplot_params, distance, cmap_default, cmap_mom0_default, cmap_vlsr_default
+from .config import (
+    pyplot_params,
+    distance,
+    cmap_default,
+    cmap_mom0_default,
+    cmap_vlsr_default,
+)
 
 # name of the region
 label_col = "black"
 label_col_back = "white"
 
 
-def determine_noise_map(data_2d: np.ndarray) -> float:
+def determine_noise_map(data_2d: NDArray) -> float:
     """
     Determine the noise in the continuum data.
     """
@@ -39,7 +50,9 @@ def determine_noise_map(data_2d: np.ndarray) -> float:
     return noise_2dmap
 
 
-def get_contour_params(maximum: float, noise: float) -> tuple[float, float]:
+def get_contour_params(
+    maximum: float, noise: float
+) -> tuple[NDArray[np.float64], list[str], bool]:
     """
     Compute the contour levels for the continuum data.
     maximum: maximum value to be shown in the plot
@@ -49,14 +62,14 @@ def get_contour_params(maximum: float, noise: float) -> tuple[float, float]:
     # determines the number of contours to be plotted
     steps = int(np.log(maximum / (5.0 * noise)) // np.log(2.0)) + 1
     if steps < 1:
-        return [0], ['solid'], False
+        return np.array([0.0]), ["solid"], False
     steps_arr = np.logspace(
         start=0,
         stop=steps,
         num=steps,
         endpoint=False,
         base=2.0,
-        dtype=None,
+        dtype=np.float64,
         axis=0,
     )
     # append -5 sigma to the array and multiply by step size
@@ -113,7 +126,7 @@ def filename_line_vlsr(region: str, linename: str, mosaic: bool = False) -> str:
 def load_continuum_data(
     datafile: str,
     region: str,
-) -> tuple[np.ndarray, float, fits.header.Header]:
+) -> tuple[NDArray[np.float64], float, fits.header.Header]:
     """
     Function to load the continuum data and return the cutout specified in the dictionary.
     It return the data, estimated noise, and the FITS header.
@@ -129,14 +142,17 @@ def load_continuum_data(
     # loads the cutout of the region. It uses the region dictionary to set the cutout size.
     hdu_cont = load_cutout(datafile, source=region, is_hdu=False)
     # set empty pixels (0.0) to NaN
-    hdu_cont.data[hdu_cont.data == 0.0] = np.nan
+
+    header = cast(Header, hdu_cont.header)
+    data_cont = cast(NDArray, hdu_cont.data)
+    data_cont[data_cont == 0.0] = np.nan
     # Update the header with the updated WCS from the cutout, as well as the data in mJy/beam.
-    header = hdu_cont.header
-    if header["BUNIT"].casefold() == "JY/BEAM".casefold():
-        data_cont = np.squeeze(hdu_cont.data) * 1e3
+    # header = hdu_cont.header
+    if str(header["BUNIT"]).casefold() == "JY/BEAM".casefold():
+        data_cont = np.squeeze(data_cont) * 1e3
         header["BUNIT"] = "mJy/beam"
     else:
-        data_cont = np.squeeze(hdu_cont.data)
+        data_cont = np.squeeze(data_cont)
     # compute noise
     noise_cont = determine_noise_map(data_cont)
     return data_cont, noise_cont, header
@@ -145,7 +161,7 @@ def load_continuum_data(
 def load_line_TdV(
     datafile: str,
     region: str,
-) -> tuple[np.ndarray, float, fits.header.Header]:
+) -> tuple[NDArray[np.float64], float, fits.header.Header]:
     """
     Function to load the integrated intensity map and return the cutout specified in the dictionary.
     It return the data, estimated noise, and the FITS header.
@@ -160,18 +176,19 @@ def load_line_TdV(
     # loads the cutout of the region. It uses the region dictionary to set the cutout size.
     hdu = load_cutout(datafile, source=region, is_hdu=False)
     # set empty pixels (0.0) to NaN
-    hdu.data[hdu.data == 0.0] = np.nan
+    data = cast(NDArray, hdu.data)
+    data = np.squeeze(data)
+    data[data == 0.0] = np.nan
     # Update the header with the updated WCS from the cutout, as well as the data in mJy/beam.
     header = hdu.header
-    if header["BUNIT"].casefold() == "JY/BEAM KM/S".casefold():
-        data = np.squeeze(hdu.data) * 1e3
+    unit_string = str(header["BUNIT"]).casefold()
+    if unit_string == "JY/BEAM KM/S".casefold():
+        data = data * 1e3
         header["BUNIT"] = "mJy/beam km/s"
-    elif header["BUNIT"].casefold() == "mJY/BEAM KM/S".casefold():
-        data = np.squeeze(hdu.data)
+    elif unit_string == "mJY/BEAM KM/S".casefold():
         header["BUNIT"] = "mJy/beam km/s"
     else:
         header["BUNIT"] = "K km/s"
-        data = np.squeeze(hdu.data)
     # compute noise
     noise_map = determine_noise_map(data)
     return data, noise_map, header
@@ -189,7 +206,7 @@ def get_frequency(header: fits.header.Header) -> float:
     if "RESTFREQ" not in header:
         raise ValueError("RESTFREQ not found in header.")
     else:
-        restfreq = header["RESTFREQ"]  # Hz
+        restfreq = cast(float, header["RESTFREQ"])  # Hz
     return restfreq * 1e-9
 
 
@@ -203,11 +220,15 @@ def get_wavelength(header: fits.header.Header) -> float:
     wavelength: wavelength in mm
     """
     restfreq = get_frequency(header)
-    wavelength = (restfreq * u.GHz).to(u.mm, equivalencies=u.spectral())
+    wavelength = (restfreq * u.GHz).to(u.mm, equivalencies=u.spectral())  # type: ignore
     return np.around(wavelength, decimals=1)  # mm
 
 
-def prodige_style(ax: plt.Axes, do_offsets: bool = False, center_coord=None) -> None:
+def prodige_style(
+    ax: WCSAxes,
+    do_offsets: bool = False,
+    center_coord: SkyCoord | None = None,
+) -> None:
     """
     Setting a common style for the plots. This includes axis labels, tick labels, and minor ticks.
     Pararameters:
@@ -221,11 +242,10 @@ def prodige_style(ax: plt.Axes, do_offsets: bool = False, center_coord=None) -> 
         DEC.set_major_formatter("dd:mm:ss")
         RA.set_major_formatter("hh:mm:ss.s")
         DEC.set_axislabel(r"$\delta$ (J2000)", minpad=0.8)
-        DEC.set_ticklabel(rotation=90.0, color="black",
-                          exclude_overlapping=True)
+        DEC.set_ticklabel(rotation=90.0, color="black", exclude_overlapping=True)
         RA.set_ticklabel(color="black", exclude_overlapping=True)
-        DEC.set_ticks(spacing=10 * u.arcsec, color="black")
-        RA.set_ticks(spacing=1.0 * 15 * u.arcsec, color="black")
+        DEC.set_ticks(spacing=10 * u.arcsec, color="black")  # type: ignore
+        RA.set_ticks(spacing=1.0 * 15 * u.arcsec, color="black")  # type: ignore
         RA.display_minor_ticks(True)
         DEC.display_minor_ticks(True)
         DEC.set_minor_frequency(5)
@@ -258,17 +278,18 @@ def prodige_style(ax: plt.Axes, do_offsets: bool = False, center_coord=None) -> 
         dec_offset.set_ticklabel_position("l")
         ra_offset.set_axislabel_position("b")
         dec_offset.set_axislabel_position("l")
-        ra_offset.coord_wrap = 180*u.deg  # avoid wrapping
+        ra_offset.coord_wrap = 180 * u.deg  # avoid wrapping # type: ignore
         ra_offset.display_minor_ticks(True)
         dec_offset.display_minor_ticks(True)
         dec_offset.set_minor_frequency(5)
         ra_offset.set_minor_frequency(5)
-        dec_offset.set_ticks(spacing=15 * u.arcsec, color="black")
-        ra_offset.set_ticks(spacing=15 * u.arcsec, color="black")
+        dec_offset.set_ticks(spacing=15 * u.arcsec, color="black")  # type: ignore
+        ra_offset.set_ticks(spacing=15 * u.arcsec, color="black")  # type: ignore
 
 
+@u.quantity_input
 def annotate_sources(
-    ax: plt.Axes,
+    ax: WCSAxes,
     wcs: WCS.wcs,
     color: str = "cornflowerblue",
     color_back: str = "black",
@@ -276,7 +297,7 @@ def annotate_sources(
     label: bool = True,
     connect_line: bool = False,
     fontsize: int = 10,
-    label_offset: u.Quantity = 1.0 * u.arcsec,
+    label_offset: u.Quantity = 1.0 * u.arcsec,  # type: ignore
 ) -> None:
     """
     Convenience function to annotate sources in the field of view.
@@ -299,14 +320,14 @@ def annotate_sources(
     for source_i, RA_i, Dec_i, offset_PA_i in zip(
         sources_name, sources_RA, sources_Dec, label_offsetPA
     ):
-        c = SkyCoord(ra=RA_i, dec=Dec_i, unit=(u.hourangle, u.deg))
+        c = SkyCoord(ra=RA_i, dec=Dec_i, unit=(u.hourangle, u.deg))  # type: ignore
         # Check if source is within the field of view
         if wcs.footprint_contains(c) == False:
             continue
         if marker == True:
             ax.scatter(
-                c.ra,
-                c.dec,
+                c.ra,  # type: ignore
+                c.dec,  # type: ignore
                 marker="*",
                 c=color,
                 edgecolor="black",
@@ -317,11 +338,10 @@ def annotate_sources(
             )
 
         if label == True:
-            c_label = c.directional_offset_by(
-                offset_PA_i * u.deg, label_offset)
+            c_label = c.directional_offset_by(offset_PA_i * u.deg, label_offset)  # type: ignore
             label_text = ax.text(
-                c_label.ra.degree,
-                c_label.dec.degree,
+                c_label.ra.degree,  # type: ignore
+                c_label.dec.degree,  # type: ignore
                 r"\textbf{" + str(source_i) + r"}",
                 transform=ax.get_transform("world"),
                 color=color,
@@ -335,14 +355,14 @@ def annotate_sources(
 
         if connect_line == True:
             c_line_start = c.directional_offset_by(
-                offset_PA_i * u.deg, 0.2 * label_offset
+                offset_PA_i * u.deg, 0.2 * label_offset  # type: ignore
             )
             c_line_end = c.directional_offset_by(
-                offset_PA_i * u.deg, 0.5 * label_offset
+                offset_PA_i * u.deg, 0.5 * label_offset  # type: ignore
             )
             ax.plot(
-                [c_line_start.ra.degree, c_line_end.ra.degree],
-                [c_line_start.dec.degree, c_line_end.dec.degree],
+                [c_line_start.ra.degree, c_line_end.ra.degree],  # type: ignore
+                [c_line_start.dec.degree, c_line_end.dec.degree],  # type: ignore
                 color=color_back,
                 lw=1.5,
                 alpha=0.7,
@@ -350,8 +370,8 @@ def annotate_sources(
                 transform=ax.get_transform("world"),
             )
             ax.plot(
-                [c_line_start.ra.degree, c_line_end.ra.degree],
-                [c_line_start.dec.degree, c_line_end.dec.degree],
+                [c_line_start.ra.degree, c_line_end.ra.degree],  # type: ignore
+                [c_line_start.dec.degree, c_line_end.dec.degree],  # type: ignore
                 color=color,
                 lw=1.0,
                 alpha=0.7,
@@ -360,12 +380,13 @@ def annotate_sources(
             )
 
 
+@u.quantity_input
 def annotate_outflow(
-    ax: plt.Axes,
+    ax: WCSAxes,
     wcs: WCS.wcs,
     arrow_width: float = 1.0,
-    arrow_length: u.Quantity = 3 * u.arcsec,
-    arrow_offset: u.Quantity = 0.05 * u.arcsec,
+    arrow_length: u.Quantity = 3 * u.arcsec,  # type: ignore
+    arrow_offset: u.Quantity = 0.05 * u.arcsec,  # type: ignore
 ) -> None:
     """
     Function to add outflow orientations to the plot.
@@ -387,31 +408,29 @@ def annotate_outflow(
     ):
         # for k in range(sources_name.size):
         # source coordinate
-        c = SkyCoord(ra=RA_i, dec=Dec_i, unit=(u.hourangle, u.deg))
+        c = SkyCoord(ra=RA_i, dec=Dec_i, unit=(u.hourangle, u.deg))  # type: ignore
         #  sources_Dec[k], unit=(u.hourangle, u.deg))
         # check if source is within the field of view
         # and if the outflow orientation is defined
         if (wcs.footprint_contains(c) & np.isfinite(source_outflowPA_i)) == False:
             continue
-        c_blue_start = c.directional_offset_by(
-            source_outflowPA_i * u.deg, arrow_offset)
-        c_blue_end = c.directional_offset_by(
-            source_outflowPA_i * u.deg, arrow_length)
+        c_blue_start = c.directional_offset_by(source_outflowPA_i * u.deg, arrow_offset)  # type: ignore
+        c_blue_end = c.directional_offset_by(source_outflowPA_i * u.deg, arrow_length)  # type: ignore
         c_red_start = c.directional_offset_by(
-            (180 + source_outflowPA_i) * u.deg, arrow_offset
+            (180 + source_outflowPA_i) * u.deg, arrow_offset  # type: ignore
         )
         c_red_end = c.directional_offset_by(
-            (180 + source_outflowPA_i) * u.deg, arrow_length
+            (180 + source_outflowPA_i) * u.deg, arrow_length  # type: ignore
         )
         # calculate the offset for the arrows
-        dx_blue = c_blue_end.ra.degree - c_blue_start.ra.degree
-        dy_blue = c_blue_end.dec.degree - c_blue_start.dec.degree
-        dx_red = c_red_end.ra.degree - c_red_start.ra.degree
-        dy_red = c_red_end.dec.degree - c_red_start.dec.degree
+        dx_blue = c_blue_end.ra.degree - c_blue_start.ra.degree  # type: ignore
+        dy_blue = c_blue_end.dec.degree - c_blue_start.dec.degree  # type: ignore
+        dx_red = c_red_end.ra.degree - c_red_start.ra.degree  # type: ignore
+        dy_red = c_red_end.dec.degree - c_red_start.dec.degree  # type: ignore
         # add blue and redshifted arrow
         plt.arrow(
-            c_blue_start.ra.degree,
-            c_blue_start.dec.degree,
+            c_blue_start.ra.degree,  # type: ignore
+            c_blue_start.dec.degree,  # type: ignore
             dx_blue,
             dy_blue,
             lw=1,
@@ -424,8 +443,8 @@ def annotate_outflow(
             zorder=20,
         )
         plt.arrow(
-            c_red_start.ra.degree,
-            c_red_start.dec.degree,
+            c_red_start.ra.degree,  # type: ignore
+            c_red_start.dec.degree,  # type: ignore
             dx_red,
             dy_red,
             lw=1,
@@ -439,7 +458,8 @@ def annotate_outflow(
         )
 
 
-def validate_frequency(frequency: u.Hz) -> bool:
+@u.quantity_input
+def validate_frequency(frequency: u.Hz) -> bool:  # type: ignore
     """
     Function to validate the frequency.
     Parameters:
@@ -448,11 +468,12 @@ def validate_frequency(frequency: u.Hz) -> bool:
     Returns:
     True if the frequency is valid.
     """
-    frequency.to(u.Hz)
+    frequency.to(u.Hz)  # type: ignore
     return True
 
 
-def pb_telecope(frequency: u.Hz, telescope: str = "NOEMA") -> u.degree:
+@u.quantity_input
+def pb_telecope(frequency: u.Hz, telescope: str = "NOEMA") -> u.degree:  # type: ignore
     """
     Function to compute the primary beam of the NOEMA telescope.
     Parameters:
@@ -465,25 +486,31 @@ def pb_telecope(frequency: u.Hz, telescope: str = "NOEMA") -> u.degree:
     validate_frequency(frequency)
     if telescope == "NOEMA":
         # NOEMA primary beam
-        pb = (64.1 * u.arcsec * 72.78382 * u.GHz / frequency).decompose()
+        pb = (64.1 * u.arcsec * 72.78382 * u.GHz / frequency).decompose()  # type: ignore
     elif telescope == "ALMA":
-        pb = (19.0 * u.arcsec * 300 * u.GHz / frequency).decompose()
+        pb = (19.0 * u.arcsec * 300 * u.GHz / frequency).decompose()  # type: ignore
     elif telescope == "SMA":
-        pb = (36.0 * u.arcsec * 345 * u.GHz / frequency).decompose()
+        pb = (36.0 * u.arcsec * 345 * u.GHz / frequency).decompose()  # type: ignore
     elif telescope == "VLA":
-        pb = (45.0 * u.arcmin * 1 * u.GHz / frequency).decompose()
+        pb = (45.0 * u.arcmin * 1 * u.GHz / frequency).decompose()  # type: ignore
     else:
         raise ValueError(
             "Telescope not supported. Please choose NOEMA, ALMA, SMA, or VLA."
         )
-    return pb.to(u.degree)
+    return pb.to(u.degree)  # type: ignore
 
 
-def plot_PB(ax: plt.Axes, header: fits.header.Header, ra0: float, dec0: float, color: str = 'white') -> None:
-    frequeny = get_frequency(header) * u.GHz
+def plot_PB(
+    ax: WCSAxes,
+    header: fits.header.Header,
+    ra0: float,
+    dec0: float,
+    color: str = "white",
+) -> None:
+    frequeny = get_frequency(header) * u.GHz  # type: ignore
     pb_noema = pb_telecope(frequeny, telescope="NOEMA")
     circ = SphericalCircle(
-        (ra0 * u.deg, dec0 * u.deg),
+        (ra0 * u.deg, dec0 * u.deg),  # type: ignore
         pb_noema / 2.0,
         ls=(0, (5, 10)),
         lw=1.0,
@@ -501,8 +528,8 @@ def plot_continuum(
     fig_directory: str = "./",
     cmap: str | None = None,
     color_nan: str = "0.1",
-    vmin: float = None,
-    vmax: float = None,
+    vmin: float | None = None,
+    vmax: float | None = None,
     mosaic: bool = False,
     do_marker: bool = False,
     do_outflow: bool = False,
@@ -556,7 +583,7 @@ def plot_continuum(
 
     # create figure
     fig = plt.figure(1, figsize=(fig_width, fig_height))
-    ax = plt.subplot(1, 1, 1, projection=wcs_cont)
+    ax = cast(WCSAxes, plt.subplot(1, 1, 1, projection=wcs_cont))
 
     # plot continuum in color
     im = ax.imshow(
@@ -565,16 +592,17 @@ def plot_continuum(
         interpolation="None",
         cmap=color_map,
         alpha=1.0,
-        transform=ax.get_transform(wcs_cont),
         vmin=vmin,
         vmax=vmax,
     )
+
     if mosaic == False:
         plot_PB(ax, hd_cont, ra0, dec0)
 
     # add continuum contour levels
     cont_levels, style_levels, valid_contour = get_contour_params(
-        np.nanmax(data_cont), noise_cont)
+        np.nanmax(data_cont), noise_cont
+    )
 
     if valid_contour:
         ax.contour(
@@ -584,7 +612,7 @@ def plot_continuum(
             levels=cont_levels,
             linestyles=style_levels,
             linewidths=0.75,
-            transform=ax.get_transform(wcs_cont),
+            transform=ax.get_transform(wcs_cont),  # type: ignore[arg-type]
         )
 
         ax.contour(
@@ -594,7 +622,7 @@ def plot_continuum(
             levels=cont_levels,
             linestyles=style_levels,
             linewidths=0.35,
-            transform=ax.get_transform(wcs_cont),
+            transform=ax.get_transform(wcs_cont),  # type: ignore[arg-type]
         )
 
     # annotate source names
@@ -608,7 +636,7 @@ def plot_continuum(
             fontsize=10,
             marker=do_marker,
             label=True,
-            label_offset=4.0 * u.arcsec,
+            label_offset=4.0 * u.arcsec,  # type: ignore
             connect_line=True,
         )
 
@@ -618,41 +646,37 @@ def plot_continuum(
     prodige_style(ax)
     # Get coordinates for colorbar
     cax = fig.add_axes(
-        [
+        (
             ax.get_position().x1 + 0.005,
             ax.get_position().y0,
             0.025,
             ax.get_position().height,
-        ]
+        )
     )
     # add colorbar
     cb = fig.colorbar(im, cax=cax)
-    cb.set_label(r"$I_{" + str(wavelength.value) +
-                 "\\, \\rm mm}$ (mJy\\,beam$^{-1}$)")
-    cb.ax.yaxis.set_tick_params(
-        color="black", labelcolor="black", direction="out")
+    cb.set_label(r"$I_{" + str(wavelength) + "\\, \\rm mm}$ (mJy\\,beam$^{-1}$)")
+    cb.ax.yaxis.set_tick_params(color="black", labelcolor="black", direction="out")
     cb.ax.locator_params(nbins=5)
 
     # cb.locator = MultipleLocator(10.0)
     cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.0f}"))
     # add linear scale bar (1000 au)
-    length = (1e3 * u.au / (distance * u.pc)
-              ).to(u.deg, u.dimensionless_angles())
-    add_scalebar(ax, length, label=r"1\,000 au",
-                 color=label_col, corner="bottom right")
+    length = (1e3 * u.au / (distance * u.pc)).to(u.deg, u.dimensionless_angles())  # type: ignore
+    add_scalebar(ax, length, label=r"1\,000 au", color=label_col, corner="bottom right")
     # add beam
     add_beam(
         ax, header=hd_cont, frame=False, pad=0.2, color=label_col, corner="bottom left"
     )
     # save plot
     if save_fig:
-        plt.savefig(
+        fig.savefig(
             fig_directory + "continuum_" + region + "_" + bb + ".pdf",
             format="pdf",
             bbox_inches="tight",
             pad_inches=0.01,
         )
-        plt.close()
+        plt.close(fig)
 
 
 def plot_line_mom0(
@@ -663,15 +687,15 @@ def plot_line_mom0(
     fig_directory: str = "./",
     cmap: str | None = None,
     color_nan: str = "0.1",
-    vmin: float = None,
-    vmax: float = None,
+    vmin: float | None = None,
+    vmax: float | None = None,
     mosaic: bool = False,
     do_marker: bool = False,
     do_outflow: bool = False,
     do_annotation: bool = True,
     save_fig: bool = True,
 ) -> None:
-    label_col_TdV = 'white'
+    label_col_TdV = "white"
     if cmap == None:
         cmap = cmap_mom0_default
     # use general plot parameters
@@ -683,9 +707,7 @@ def plot_line_mom0(
     ra0, dec0 = get_region_center(region)
     # load integrated intensity data
     file_name = filename_line_TdV(region, linename, mosaic)
-    data, noise_map, hd_TdV = load_line_TdV(
-        data_directory + file_name, region
-    )
+    data, noise_map, hd_TdV = load_line_TdV(data_directory + file_name, region)
     if vmin == None:
         vmin = -5.0 * noise_map
     if vmax == None:
@@ -695,7 +717,7 @@ def plot_line_mom0(
 
     # create figure
     fig = plt.figure(1, figsize=(fig_width, fig_height))
-    ax = plt.subplot(1, 1, 1, projection=wcs_TdV)
+    ax = cast(WCSAxes, plt.subplot(1, 1, 1, projection=wcs_TdV))
     # plot continuum in color
     im = ax.imshow(
         data,
@@ -703,14 +725,14 @@ def plot_line_mom0(
         interpolation="None",
         cmap=color_map,
         alpha=1.0,
-        transform=ax.get_transform(wcs_TdV),
         vmin=vmin,
         vmax=vmax,
     )
     if mosaic == False:
         plot_PB(ax, hd_TdV, ra0, dec0)
     cont_levels, style_levels, valid_contour = get_contour_params(
-        np.nanmax(data), noise_map)
+        np.nanmax(data), noise_map
+    )
 
     if valid_contour:
         ax.contour(
@@ -720,7 +742,7 @@ def plot_line_mom0(
             levels=cont_levels,
             linestyles=style_levels,
             linewidths=0.75,
-            transform=ax.get_transform(wcs_TdV),
+            transform=ax.get_transform(wcs_TdV),  # type: ignore[arg-type]
         )
 
         ax.contour(
@@ -730,7 +752,7 @@ def plot_line_mom0(
             levels=cont_levels,
             linestyles=style_levels,
             linewidths=0.35,
-            transform=ax.get_transform(wcs_TdV),
+            transform=ax.get_transform(wcs_TdV),  # type: ignore[arg-type]
         )
 
     # annotate source names
@@ -744,7 +766,7 @@ def plot_line_mom0(
             fontsize=10,
             marker=do_marker,
             label=True,
-            label_offset=4.0 * u.arcsec,
+            label_offset=4.0 * u.arcsec,  # type: ignore
             connect_line=True,
         )
 
@@ -753,7 +775,7 @@ def plot_line_mom0(
         annotate_outflow(ax, wcs_TdV, arrow_width=2.0)
     prodige_style(ax)
 
-   # Get coordinates for colorbar
+    # Get coordinates for colorbar
     # cax = fig.add_axes(
     #     [
     #         ax.get_position().x1 + 0.005,
@@ -772,23 +794,28 @@ def plot_line_mom0(
     # cb.locator = MultipleLocator(10.0)
     # cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.0f}"))
     # add linear scale bar (1000 au)
-    length = (1e3 * u.au / (distance * u.pc)
-              ).to(u.deg, u.dimensionless_angles())
-    add_scalebar(ax, length, label=r"1\,000 au",
-                 color=label_col_TdV, corner="bottom right")
+    length = (1e3 * u.au / (distance * u.pc)).to(u.deg, u.dimensionless_angles())  # type: ignore
+    add_scalebar(
+        ax, length, label=r"1\,000 au", color=label_col_TdV, corner="bottom right"
+    )
     # add beam
     add_beam(
-        ax, header=hd_TdV, frame=False, pad=0.2, color=label_col_TdV, corner="bottom left"
+        ax,
+        header=hd_TdV,
+        frame=False,
+        pad=0.2,
+        color=label_col_TdV,
+        corner="bottom left",
     )
     # save plot
     if save_fig:
-        plt.savefig(
+        fig.savefig(
             fig_directory + region + "_" + linename + "_TdV.pdf",
             format="pdf",
             bbox_inches="tight",
             pad_inches=0.01,
         )
-        plt.close()
+        plt.close(fig)
 
 
 def plot_line_vlsr(
@@ -798,8 +825,8 @@ def plot_line_vlsr(
     fig_directory: str = "./",
     cmap: str | None = None,
     color_nan: str = "0.1",
-    vmin: float = None,
-    vmax: float = None,
+    vmin: float | None = None,
+    vmax: float | None = None,
     mosaic: bool = False,
     do_marker: bool = False,
     do_outflow: bool = False,
@@ -827,7 +854,7 @@ def plot_line_vlsr(
     do_offsets: if True, the axes are displayed in offsets
     save_fig: if True, the figure is saved to disk
     """
-    label_col_Vlsr = 'black'
+    label_col_Vlsr = "black"
     if cmap == None:
         cmap = cmap_vlsr_default
     # use general plot parameters
@@ -844,19 +871,17 @@ def plot_line_vlsr(
 
     # load velocity data
     hdu = load_cutout(data_directory + file_name, source=region, is_hdu=False)
-    data = hdu.data
+    data = cast(NDArray, hdu.data)
     # load integrated intensity data
-    data_TdV, noise_map, hd_TdV = load_line_TdV(
-        data_directory + file_TdV, region
-    )
-    if vmin == None and vmax == None:
-        vmin, vmax = np.nanpercentile(data, [5, 95])
-        delta = np.max([np.abs(vmin-v_lsr), np.abs(vmax-v_lsr)])
+    data_TdV, noise_map, hd_TdV = load_line_TdV(data_directory + file_TdV, region)
+    if vmin is None and vmax is None:
+        vmin_tmp, vmax_tmp = np.nanpercentile(data, [5, 95])
+        delta = np.max([np.abs(vmin_tmp - v_lsr), np.abs(vmax_tmp - v_lsr)])
         vmin = v_lsr - delta
         vmax = v_lsr + delta
-    elif vmax == None:
+    elif vmax is None:
         vmax = np.nanmax(data)
-    else:
+    elif vmin is None:
         vmin = np.nanmin(data)
 
     wcs_TdV = WCS(hd_TdV)
@@ -864,7 +889,7 @@ def plot_line_vlsr(
 
     # create figure
     fig = plt.figure(1, figsize=(fig_width, fig_height))
-    ax = plt.subplot(1, 1, 1, projection=wcs_Vlsr)
+    ax = cast(WCSAxes, plt.subplot(1, 1, 1, projection=wcs_Vlsr))
     # plot continuum in color
     im = ax.imshow(
         data,
@@ -872,7 +897,6 @@ def plot_line_vlsr(
         interpolation="None",
         cmap=color_map,
         alpha=1.0,
-        transform=ax.get_transform(wcs_Vlsr),
         vmin=vmin,
         vmax=vmax,
     )
@@ -880,7 +904,8 @@ def plot_line_vlsr(
         plot_PB(ax, hd_TdV, ra0, dec0, color=label_col_Vlsr)
     #
     cont_levels, style_levels, valid_contour = get_contour_params(
-        np.nanmax(data_TdV), noise_map)
+        np.nanmax(data_TdV), noise_map
+    )
 
     if valid_contour:
         ax.contour(
@@ -890,7 +915,7 @@ def plot_line_vlsr(
             levels=cont_levels,
             linestyles=style_levels,
             linewidths=0.75,
-            transform=ax.get_transform(wcs_TdV),
+            transform=ax.get_transform(wcs_TdV),  # type: ignore[arg-type]
         )
 
         ax.contour(
@@ -900,7 +925,7 @@ def plot_line_vlsr(
             levels=cont_levels,
             linestyles=style_levels,
             linewidths=0.35,
-            transform=ax.get_transform(wcs_TdV),
+            transform=ax.get_transform(wcs_TdV),  # type: ignore[arg-type]
         )
 
     # annotate source names
@@ -914,7 +939,7 @@ def plot_line_vlsr(
             fontsize=10,
             marker=do_marker,
             label=True,
-            label_offset=4.0 * u.arcsec,
+            label_offset=4.0 * u.arcsec,  # type: ignore
             connect_line=True,
         )
 
@@ -922,35 +947,42 @@ def plot_line_vlsr(
     if do_outflow:
         annotate_outflow(ax, wcs_TdV, arrow_width=2.0)
     # style
-    prodige_style(ax, do_offsets=do_offsets, center_coord=SkyCoord(
-        ra=ra0, dec=dec0, unit=(u.deg, u.deg)))
+    prodige_style(
+        ax,
+        do_offsets=do_offsets,
+        center_coord=SkyCoord(ra=ra0, dec=dec0, unit=(u.deg, u.deg)),  # type: ignore
+    )
 
-   # Get coordinates for colorbar
+    # Get coordinates for colorbar
     cax = fig.add_axes(
-        [
+        (
             ax.get_position().x1 + 0.005,
             ax.get_position().y0,
             0.025,
             ax.get_position().height,
-        ]
+        )
     )
     # add colorbar
     cb = fig.colorbar(im, cax=cax)
     # cb.set_label(r"$V_{LSR}$ (km \\,s$^{-1}$)")
-    cb.ax.yaxis.set_tick_params(
-        color="black", labelcolor="black", direction="out")
+    cb.ax.yaxis.set_tick_params(color="black", labelcolor="black", direction="out")
     cb.ax.locator_params(nbins=5)
 
     # cb.locator = MultipleLocator(10.0)
     cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.1f}"))
     # add linear scale bar (1000 au)
-    length = (1e3 * u.au / (distance * u.pc)
-              ).to(u.deg, u.dimensionless_angles())
-    add_scalebar(ax, length, label=r"1\,000 au",
-                 color=label_col_Vlsr, corner="bottom right")
+    length = (1e3 * u.au / (distance * u.pc)).to(u.deg, u.dimensionless_angles())  # type: ignore
+    add_scalebar(
+        ax, length, label=r"1\,000 au", color=label_col_Vlsr, corner="bottom right"
+    )
     # add beam
     add_beam(
-        ax, header=hd_TdV, frame=False, pad=0.2, color=label_col_Vlsr, corner="bottom left"
+        ax,
+        header=hd_TdV,
+        frame=False,
+        pad=0.2,
+        color=label_col_Vlsr,
+        corner="bottom left",
     )
     # save plot
     if save_fig:
@@ -960,4 +992,4 @@ def plot_line_vlsr(
             bbox_inches="tight",
             pad_inches=0.01,
         )
-        plt.close()
+        plt.close(fig)

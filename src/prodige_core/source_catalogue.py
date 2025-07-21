@@ -1,14 +1,13 @@
-from __future__ import annotations
-
 import numpy as np
-
+from numpy.typing import NDArray
 from astropy.coordinates import SkyCoord
 from astropy.nddata.utils import Cutout2D
 
 from astropy import units as u
 from astropy.io import fits
+from astropy.io.fits import PrimaryHDU
 from astropy.wcs import WCS
-
+from typing import cast
 
 try:
     from importlib.resources import files
@@ -19,13 +18,13 @@ from .config import source_filename
 
 
 def load_sources_table() -> tuple[
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
+    NDArray[np.str_],
+    NDArray[np.str_],
+    NDArray[np.str_],
+    NDArray[np.str_],
+    NDArray[np.float64],
+    NDArray[np.float64],
+    NDArray[np.float64],
 ]:
     """
     Load the source table containing the sources within the field of view.
@@ -33,9 +32,11 @@ def load_sources_table() -> tuple[
     """
     # load table containing sources within FoV
     # sources within FOV
+    # need to skip the first line, which is the header
     data_file = files("prodige_core").joinpath(source_filename)
-    sources_tab = np.loadtxt(data_file, dtype="U",
-                             delimiter=",", comments="#", skiprows=1)
+    sources_tab = np.loadtxt(
+        str(data_file), dtype=np.str_, delimiter=",", comments="#", skiprows=1
+    )
     # source name
     name_list = sources_tab[:, 0]
     # source RA
@@ -67,16 +68,16 @@ def load_sources_table() -> tuple[
 # these are supposed to be used for plotting purposes
 fig_width_def = 6.0
 fig_height_def = 6.0
-width_def = 40.0 * u.arcsec
-height_def = 40.0 * u.arcsec
+width_def = 40.0 * u.arcsec  # type: ignore
+height_def = 40.0 * u.arcsec  # type: ignore
 
 region_dic = {
     # these are the name of the mosaicked regions
     "L1448N": {
         "RA0": "3:25:36.44",
         "Dec0": "30:45:18.3",
-        "height": 33 * u.arcsec,
-        "width": 30 * u.arcsec,
+        "height": 33 * u.arcsec,  # type: ignore
+        "width": 30 * u.arcsec,  # type: ignore
         "fig_width": fig_width_def,
         "fig_height": fig_height_def,
     },
@@ -277,8 +278,8 @@ region_dic = {
 
 
 def load_cutout(
-    file_in: str, source: str = "L1448N", is_hdu: bool = False
-) -> fits.hdu.hdulist.HDUList:
+    file_in: str | PrimaryHDU, source: str = "L1448N", is_hdu: bool = False
+) -> PrimaryHDU:
     """
     Convenience function to load a FITS file, or an existing HDU,
     and to generate a cutout following the requested center and sizes.
@@ -298,26 +299,37 @@ def load_cutout(
     validate_source_id(source)
     position = SkyCoord(
         region_dic[source]["RA0"] + " " + region_dic[source]["Dec0"],
-        unit=(u.hourangle, u.deg),
+        unit=(u.hourangle, u.deg),  # type: ignore
     )
     cutout_size = u.Quantity(
         (region_dic[source]["height"], region_dic[source]["width"])
     )
-
-    if is_hdu == False:
-        hdu = fits.open(file_in)[0]
-    else:
+    hdu: PrimaryHDU
+    if not is_hdu:
+        hdulist = fits.open(file_in)
+        if not isinstance(hdulist[0], PrimaryHDU):
+            raise TypeError("Expected PrimaryHDU in hdulist[0]")
+        hdu = cast(PrimaryHDU, hdulist[0])
+    elif isinstance(file_in, PrimaryHDU):
         hdu = file_in.copy()
-    # Make the cutout, including the WCS
-    if hdu.header["NAXIS"] != 2:
-        wcs_original = WCS(hdu.header).dropaxis(2)
     else:
-        wcs_original = WCS(hdu.header)
+        raise ValueError(
+            "file_in must be a valid FITS file name or a PrimaryHDU object."
+        )
+    # Make the cutout, including the WCS
+    hd_original = hdu.header.copy()
+    data_original = cast(NDArray, hdu.data)
+    if hd_original["NAXIS"] != 2:
+        wcs_original = WCS(hd_original).dropaxis(2)
+    else:
+        wcs_original = WCS(hd_original)
     cutout = Cutout2D(
-        np.squeeze(hdu.data), position=position, size=cutout_size, wcs=wcs_original
+        np.squeeze(data_original), position=position, size=cutout_size, wcs=wcs_original
     )
     # update HDU with new data and updated header information
     hdu.data = cutout.data
+    if cutout.wcs is None:
+        raise ValueError("Cutout WCS is missing")
     hdu.header.update(cutout.wcs.to_header())
     # list of keys to be removed (if they exist)
     key_list = [
@@ -356,17 +368,17 @@ def get_figsize(source: str) -> tuple[float, float]:
     return fig_width, fig_height
 
 
-def get_region_center(source: str) -> tuple[u.Quantity, u.Quantity]:
+def get_region_center(source: str) -> tuple[float, float]:
     """
     Convenience function to get the region center for a given source.
     """
     validate_source_id(source)
     position = SkyCoord(
         region_dic[source]["RA0"] + " " + region_dic[source]["Dec0"],
-        unit=(u.hourangle, u.deg),
+        unit=(u.hourangle, u.deg),  # type: ignore
     )
-    ra0 = position.ra.deg
-    dec0 = position.dec.deg
+    ra0 = cast(float, position.ra.deg)  # type: ignore
+    dec0 = cast(float, position.dec.deg)  # type: ignore
     return ra0, dec0
 
 
@@ -388,9 +400,13 @@ def get_region_vlsr(source: str) -> float:
     return vlsr_source[idx][0]
 
 
-def get_outflow_information() -> (
-    tuple[list[str], list[str], list[str], np.ndarray, np.ndarray]
-):
+def get_outflow_information() -> tuple[
+    NDArray[np.str_],
+    NDArray[np.str_],
+    NDArray[np.str_],
+    NDArray[np.float64],
+    NDArray[np.float64],
+]:
     """
     Convenience function to get the list of region center for a given source.
     """
