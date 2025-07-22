@@ -19,21 +19,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Install Fortran compiler
-        run: |
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            sudo apt-get update
-            sudo apt-get install -y gfortran
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            brew install gcc
-          fi
-      - name: Install OpenBLAS (macOS only)
-        run: |
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            sudo apt-get install -y libopenblas-dev
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            brew install openblas
-          fi
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
