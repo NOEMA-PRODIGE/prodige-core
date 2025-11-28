@@ -491,9 +491,11 @@ def pb_telecope(frequency: u.Hz, telescope: str = "NOEMA") -> u.degree:  # type:
         pb = (36.0 * u.arcsec * 345 * u.GHz / frequency).decompose()  # type: ignore
     elif telescope == "VLA":
         pb = (45.0 * u.arcmin * 1 * u.GHz / frequency).decompose()  # type: ignore
+    elif telescope == "30m":
+        pb = (2460 * u.arcsec * 1 * u.Ghz / frequency).decompose()  # type: ignore
     else:
         raise ValueError(
-            "Telescope not supported. Please choose NOEMA, ALMA, SMA, or VLA."
+            "Telescope not supported. Please choose NOEMA, ALMA, SMA, VLA, or 30m."
         )
     return pb.to(u.degree)  # type: ignore
 
