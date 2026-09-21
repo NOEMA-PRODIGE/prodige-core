@@ -1,11 +1,14 @@
-import radio_beam
-from astropy.io import fits
-from astropy import units as u
-from spectral_cube import SpectralCube
+from __future__ import annotations
+
 import glob
 
+import radio_beam
+from astropy import units as u
+from astropy.io import fits
+from spectral_cube import SpectralCube
 
-def check_fits_files(fits_files: list) -> None:
+
+def check_fits_files(fits_files: list[str]) -> None:
     """
     Check that all files in the list are FITS files and are present in the path.
 
@@ -20,8 +23,6 @@ def check_fits_files(fits_files: list) -> None:
             raise ValueError("All files must be FITS files.")
         if not glob.glob(f):
             raise FileNotFoundError(f"File not found: {f}")
-
-    return
 
 
 def common_beam_files(fits_files: list, suffix: str = "_smooth") -> None:
@@ -60,8 +61,6 @@ def common_beam_files(fits_files: list, suffix: str = "_smooth") -> None:
     # write out the smoothed cubes
     for i, new_cube in enumerate(convolved_cubes):
         new_cube.write(fits_files[i].replace(".fits", f"{suffix}.fits"), overwrite=True)
-
-    return
 
 
 def regrid_cubes_from_files(
@@ -111,5 +110,3 @@ def regrid_cubes_from_files(
             target_hd[key] = template_hd[key]
         regridded_cube = cube.reproject(target_hd)
         regridded_cube.write(f.replace(".fits", f"{suffix}.fits"), overwrite=True)
-
-    return

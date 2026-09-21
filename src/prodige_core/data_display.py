@@ -1,35 +1,39 @@
-import numpy as np
-from numpy.typing import NDArray
+from __future__ import annotations
+
 from typing import cast
 
-from astropy.coordinates import SkyCoord
+import matplotlib.patheffects as PathEffects
+import matplotlib.pyplot as plt
+import numpy as np
 from astropy import units as u
+from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy.io.fits import Header
-from astropy.wcs import WCS
-from astropy.visualization.wcsaxes import WCSAxes
-from astropy.visualization.wcsaxes import SphericalCircle, add_beam, add_scalebar
 from astropy.stats import sigma_clipped_stats
-
-import matplotlib.pyplot as plt
-from matplotlib import ticker
-import matplotlib.patheffects as PathEffects
-from typing import cast
-from .source_catalogue import (
-    load_sources_table,
-    load_cutout,
-    get_figsize,
-    get_region_center,
-    get_outflow_information,
-    get_region_vlsr,
+from astropy.visualization.wcsaxes import (
+    SphericalCircle,
+    WCSAxes,
+    add_beam,
+    add_scalebar,
 )
+from astropy.wcs import WCS
+from matplotlib import ticker
+from numpy.typing import NDArray
 
 from .config import (
-    pyplot_params,
-    distance,
     cmap_default,
     cmap_mom0_default,
     cmap_vlsr_default,
+    distance,
+    pyplot_params,
+)
+from .source_catalogue import (
+    get_figsize,
+    get_outflow_information,
+    get_region_center,
+    get_region_vlsr,
+    load_cutout,
+    load_sources_table,
 )
 
 # name of the region
@@ -353,10 +357,12 @@ def annotate_sources(
 
         if connect_line == True:
             c_line_start = c.directional_offset_by(
-                offset_PA_i * u.deg, 0.2 * label_offset  # type: ignore
+                offset_PA_i * u.deg,
+                0.2 * label_offset,  # type: ignore
             )
             c_line_end = c.directional_offset_by(
-                offset_PA_i * u.deg, 0.5 * label_offset  # type: ignore
+                offset_PA_i * u.deg,
+                0.5 * label_offset,  # type: ignore
             )
             ax.plot(
                 [c_line_start.ra.degree, c_line_end.ra.degree],  # type: ignore
@@ -415,10 +421,12 @@ def annotate_outflow(
         c_blue_start = c.directional_offset_by(source_outflowPA_i * u.deg, arrow_offset)  # type: ignore
         c_blue_end = c.directional_offset_by(source_outflowPA_i * u.deg, arrow_length)  # type: ignore
         c_red_start = c.directional_offset_by(
-            (180 + source_outflowPA_i) * u.deg, arrow_offset  # type: ignore
+            (180 + source_outflowPA_i) * u.deg,
+            arrow_offset,  # type: ignore
         )
         c_red_end = c.directional_offset_by(
-            (180 + source_outflowPA_i) * u.deg, arrow_length  # type: ignore
+            (180 + source_outflowPA_i) * u.deg,
+            arrow_length,  # type: ignore
         )
         # calculate the offset for the arrows
         dx_blue = c_blue_end.ra.degree - c_blue_start.ra.degree  # type: ignore
