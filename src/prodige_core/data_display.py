@@ -18,10 +18,16 @@ from .source_catalogue import (
     get_figsize,
     get_region_center,
     get_outflow_information,
-    get_region_vlsr
+    get_region_vlsr,
 )
 
-from .config import pyplot_params, distance, cmap_default, cmap_mom0_default, cmap_vlsr_default
+from .config import (
+    pyplot_params,
+    distance,
+    cmap_default,
+    cmap_mom0_default,
+    cmap_vlsr_default,
+)
 
 # name of the region
 label_col = "black"
@@ -49,7 +55,7 @@ def get_contour_params(maximum: float, noise: float) -> tuple[float, float]:
     # determines the number of contours to be plotted
     steps = int(np.log(maximum / (5.0 * noise)) // np.log(2.0)) + 1
     if steps < 1:
-        return [0], ['solid'], False
+        return [0], ["solid"], False
     steps_arr = np.logspace(
         start=0,
         stop=steps,
@@ -221,8 +227,7 @@ def prodige_style(ax: plt.Axes, do_offsets: bool = False, center_coord=None) -> 
         DEC.set_major_formatter("dd:mm:ss")
         RA.set_major_formatter("hh:mm:ss.s")
         DEC.set_axislabel(r"$\delta$ (J2000)", minpad=0.8)
-        DEC.set_ticklabel(rotation=90.0, color="black",
-                          exclude_overlapping=True)
+        DEC.set_ticklabel(rotation=90.0, color="black", exclude_overlapping=True)
         RA.set_ticklabel(color="black", exclude_overlapping=True)
         DEC.set_ticks(spacing=10 * u.arcsec, color="black")
         RA.set_ticks(spacing=1.0 * 15 * u.arcsec, color="black")
@@ -258,7 +263,7 @@ def prodige_style(ax: plt.Axes, do_offsets: bool = False, center_coord=None) -> 
         dec_offset.set_ticklabel_position("l")
         ra_offset.set_axislabel_position("b")
         dec_offset.set_axislabel_position("l")
-        ra_offset.coord_wrap = 180*u.deg  # avoid wrapping
+        ra_offset.coord_wrap = 180 * u.deg  # avoid wrapping
         ra_offset.display_minor_ticks(True)
         dec_offset.display_minor_ticks(True)
         dec_offset.set_minor_frequency(5)
@@ -317,8 +322,7 @@ def annotate_sources(
             )
 
         if label == True:
-            c_label = c.directional_offset_by(
-                offset_PA_i * u.deg, label_offset)
+            c_label = c.directional_offset_by(offset_PA_i * u.deg, label_offset)
             label_text = ax.text(
                 c_label.ra.degree,
                 c_label.dec.degree,
@@ -393,10 +397,8 @@ def annotate_outflow(
         # and if the outflow orientation is defined
         if (wcs.footprint_contains(c) & np.isfinite(source_outflowPA_i)) == False:
             continue
-        c_blue_start = c.directional_offset_by(
-            source_outflowPA_i * u.deg, arrow_offset)
-        c_blue_end = c.directional_offset_by(
-            source_outflowPA_i * u.deg, arrow_length)
+        c_blue_start = c.directional_offset_by(source_outflowPA_i * u.deg, arrow_offset)
+        c_blue_end = c.directional_offset_by(source_outflowPA_i * u.deg, arrow_length)
         c_red_start = c.directional_offset_by(
             (180 + source_outflowPA_i) * u.deg, arrow_offset
         )
@@ -479,7 +481,13 @@ def pb_telecope(frequency: u.Hz, telescope: str = "NOEMA") -> u.degree:
     return pb.to(u.degree)
 
 
-def plot_PB(ax: plt.Axes, header: fits.header.Header, ra0: float, dec0: float, color: str = 'white') -> None:
+def plot_PB(
+    ax: plt.Axes,
+    header: fits.header.Header,
+    ra0: float,
+    dec0: float,
+    color: str = "white",
+) -> None:
     frequeny = get_frequency(header) * u.GHz
     pb_noema = pb_telecope(frequeny, telescope="NOEMA")
     circ = SphericalCircle(
@@ -574,7 +582,8 @@ def plot_continuum(
 
     # add continuum contour levels
     cont_levels, style_levels, valid_contour = get_contour_params(
-        np.nanmax(data_cont), noise_cont)
+        np.nanmax(data_cont), noise_cont
+    )
 
     if valid_contour:
         ax.contour(
@@ -627,19 +636,15 @@ def plot_continuum(
     )
     # add colorbar
     cb = fig.colorbar(im, cax=cax)
-    cb.set_label(r"$I_{" + str(wavelength.value) +
-                 "\\, \\rm mm}$ (mJy\\,beam$^{-1}$)")
-    cb.ax.yaxis.set_tick_params(
-        color="black", labelcolor="black", direction="out")
+    cb.set_label(r"$I_{" + str(wavelength.value) + "\\, \\rm mm}$ (mJy\\,beam$^{-1}$)")
+    cb.ax.yaxis.set_tick_params(color="black", labelcolor="black", direction="out")
     cb.ax.locator_params(nbins=5)
 
     # cb.locator = MultipleLocator(10.0)
     cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.0f}"))
     # add linear scale bar (1000 au)
-    length = (1e3 * u.au / (distance * u.pc)
-              ).to(u.deg, u.dimensionless_angles())
-    add_scalebar(ax, length, label=r"1\,000 au",
-                 color=label_col, corner="bottom right")
+    length = (1e3 * u.au / (distance * u.pc)).to(u.deg, u.dimensionless_angles())
+    add_scalebar(ax, length, label=r"1\,000 au", color=label_col, corner="bottom right")
     # add beam
     add_beam(
         ax, header=hd_cont, frame=False, pad=0.2, color=label_col, corner="bottom left"
@@ -671,7 +676,7 @@ def plot_line_mom0(
     do_annotation: bool = True,
     save_fig: bool = True,
 ) -> None:
-    label_col_TdV = 'white'
+    label_col_TdV = "white"
     if cmap == None:
         cmap = cmap_mom0_default
     # use general plot parameters
@@ -683,9 +688,7 @@ def plot_line_mom0(
     ra0, dec0 = get_region_center(region)
     # load integrated intensity data
     file_name = filename_line_TdV(region, linename, mosaic)
-    data, noise_map, hd_TdV = load_line_TdV(
-        data_directory + file_name, region
-    )
+    data, noise_map, hd_TdV = load_line_TdV(data_directory + file_name, region)
     if vmin == None:
         vmin = -5.0 * noise_map
     if vmax == None:
@@ -710,7 +713,8 @@ def plot_line_mom0(
     if mosaic == False:
         plot_PB(ax, hd_TdV, ra0, dec0)
     cont_levels, style_levels, valid_contour = get_contour_params(
-        np.nanmax(data), noise_map)
+        np.nanmax(data), noise_map
+    )
 
     if valid_contour:
         ax.contour(
@@ -753,7 +757,7 @@ def plot_line_mom0(
         annotate_outflow(ax, wcs_TdV, arrow_width=2.0)
     prodige_style(ax)
 
-   # Get coordinates for colorbar
+    # Get coordinates for colorbar
     # cax = fig.add_axes(
     #     [
     #         ax.get_position().x1 + 0.005,
@@ -772,13 +776,18 @@ def plot_line_mom0(
     # cb.locator = MultipleLocator(10.0)
     # cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.0f}"))
     # add linear scale bar (1000 au)
-    length = (1e3 * u.au / (distance * u.pc)
-              ).to(u.deg, u.dimensionless_angles())
-    add_scalebar(ax, length, label=r"1\,000 au",
-                 color=label_col_TdV, corner="bottom right")
+    length = (1e3 * u.au / (distance * u.pc)).to(u.deg, u.dimensionless_angles())
+    add_scalebar(
+        ax, length, label=r"1\,000 au", color=label_col_TdV, corner="bottom right"
+    )
     # add beam
     add_beam(
-        ax, header=hd_TdV, frame=False, pad=0.2, color=label_col_TdV, corner="bottom left"
+        ax,
+        header=hd_TdV,
+        frame=False,
+        pad=0.2,
+        color=label_col_TdV,
+        corner="bottom left",
     )
     # save plot
     if save_fig:
@@ -827,7 +836,7 @@ def plot_line_vlsr(
     do_offsets: if True, the axes are displayed in offsets
     save_fig: if True, the figure is saved to disk
     """
-    label_col_Vlsr = 'black'
+    label_col_Vlsr = "black"
     if cmap == None:
         cmap = cmap_vlsr_default
     # use general plot parameters
@@ -846,12 +855,10 @@ def plot_line_vlsr(
     hdu = load_cutout(data_directory + file_name, source=region, is_hdu=False)
     data = hdu.data
     # load integrated intensity data
-    data_TdV, noise_map, hd_TdV = load_line_TdV(
-        data_directory + file_TdV, region
-    )
+    data_TdV, noise_map, hd_TdV = load_line_TdV(data_directory + file_TdV, region)
     if vmin == None and vmax == None:
         vmin, vmax = np.nanpercentile(data, [5, 95])
-        delta = np.max([np.abs(vmin-v_lsr), np.abs(vmax-v_lsr)])
+        delta = np.max([np.abs(vmin - v_lsr), np.abs(vmax - v_lsr)])
         vmin = v_lsr - delta
         vmax = v_lsr + delta
     elif vmax == None:
@@ -880,7 +887,8 @@ def plot_line_vlsr(
         plot_PB(ax, hd_TdV, ra0, dec0, color=label_col_Vlsr)
     #
     cont_levels, style_levels, valid_contour = get_contour_params(
-        np.nanmax(data_TdV), noise_map)
+        np.nanmax(data_TdV), noise_map
+    )
 
     if valid_contour:
         ax.contour(
@@ -922,10 +930,13 @@ def plot_line_vlsr(
     if do_outflow:
         annotate_outflow(ax, wcs_TdV, arrow_width=2.0)
     # style
-    prodige_style(ax, do_offsets=do_offsets, center_coord=SkyCoord(
-        ra=ra0, dec=dec0, unit=(u.deg, u.deg)))
+    prodige_style(
+        ax,
+        do_offsets=do_offsets,
+        center_coord=SkyCoord(ra=ra0, dec=dec0, unit=(u.deg, u.deg)),
+    )
 
-   # Get coordinates for colorbar
+    # Get coordinates for colorbar
     cax = fig.add_axes(
         [
             ax.get_position().x1 + 0.005,
@@ -937,20 +948,24 @@ def plot_line_vlsr(
     # add colorbar
     cb = fig.colorbar(im, cax=cax)
     # cb.set_label(r"$V_{LSR}$ (km \\,s$^{-1}$)")
-    cb.ax.yaxis.set_tick_params(
-        color="black", labelcolor="black", direction="out")
+    cb.ax.yaxis.set_tick_params(color="black", labelcolor="black", direction="out")
     cb.ax.locator_params(nbins=5)
 
     # cb.locator = MultipleLocator(10.0)
     cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.1f}"))
     # add linear scale bar (1000 au)
-    length = (1e3 * u.au / (distance * u.pc)
-              ).to(u.deg, u.dimensionless_angles())
-    add_scalebar(ax, length, label=r"1\,000 au",
-                 color=label_col_Vlsr, corner="bottom right")
+    length = (1e3 * u.au / (distance * u.pc)).to(u.deg, u.dimensionless_angles())
+    add_scalebar(
+        ax, length, label=r"1\,000 au", color=label_col_Vlsr, corner="bottom right"
+    )
     # add beam
     add_beam(
-        ax, header=hd_TdV, frame=False, pad=0.2, color=label_col_Vlsr, corner="bottom left"
+        ax,
+        header=hd_TdV,
+        frame=False,
+        pad=0.2,
+        color=label_col_Vlsr,
+        corner="bottom left",
     )
     # save plot
     if save_fig:
