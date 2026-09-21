@@ -10,6 +10,25 @@ Collection of functions for a more common analysis/display of the [PRODIGE](NOEM
 
 This includes simple to use commands to make publication ready figures, as well as some convenience function to handle the data.
 
+
+## Installation
+
+Installation using pip:
+```python
+pip install prodige-core
+```
+
+From the repository root:
+```bash
+git clone https://github.com/NOEMA-PRODIGE/prodige-core.git
+```
+
+Install the package from the cloned repository with:
+```bash
+python -m pip install .
+```
+
+
 ## Credits
 
 ---
