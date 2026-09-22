@@ -388,8 +388,8 @@ def get_region_center(source: str) -> tuple[u.Quantity, u.Quantity]:
         region_dic[source]["RA0"] + " " + region_dic[source]["Dec0"],
         unit=(u.hourangle, u.deg),
     )
-    ra0 = position.ra.deg
-    dec0 = position.dec.deg
+    ra0 = position.ra.deg * u.deg
+    dec0 = position.dec.deg * u.deg
     return ra0, dec0
 
 

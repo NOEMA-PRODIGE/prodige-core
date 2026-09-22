@@ -54,7 +54,9 @@ def determine_noise_map(data_2d: NDArray[np.float64]) -> float:
     return noise_2dmap
 
 
-def get_contour_params(maximum: float, noise: float) -> tuple[float, float]:
+def get_contour_params(
+    maximum: float, noise: float
+) -> tuple[NDArray[np.float64], list[str], bool]:
     """
     Compute the contour levels for the continuum data.
     maximum: maximum value to be shown in the plot
@@ -64,14 +66,14 @@ def get_contour_params(maximum: float, noise: float) -> tuple[float, float]:
     # determines the number of contours to be plotted
     steps = int(np.log(maximum / (5.0 * noise)) // np.log(2.0)) + 1
     if steps < 1:
-        return [0], ["solid"], False
+        return [0.0], ["solid"], False
     steps_arr = np.logspace(
         start=0,
         stop=steps,
         num=steps,
         endpoint=False,
         base=2.0,
-        dtype=None,
+        dtype=np.float64,
         axis=0,
     )
     # append -5 sigma to the array and multiply by step size
@@ -537,7 +539,7 @@ def annotate_panel(
         annotate_outflow(ax, wcs, arrow_width=2.0)
 
 
-def validate_frequency(frequency: u.Hz) -> bool:
+def validate_frequency(frequency: u.Quantity[u.Hz]) -> bool:
     """
     Function to validate the frequency.
     Parameters:
@@ -550,7 +552,7 @@ def validate_frequency(frequency: u.Hz) -> bool:
     return True
 
 
-def pb_telecope(frequency: u.Hz, telescope: str = "NOEMA") -> u.degree:
+def pb_telecope(frequency: u.Quantity[u.Hz], telescope: str = "NOEMA") -> u.Quantity:
     """
     Function to compute the primary beam of the NOEMA telescope.
     Parameters:
@@ -580,15 +582,15 @@ def pb_telecope(frequency: u.Hz, telescope: str = "NOEMA") -> u.degree:
 def plot_PB(
     ax: Axes,
     header: Header,
-    ra0: float,
-    dec0: float,
+    ra0: u.Quantity,
+    dec0: u.Quantity,
     color: str = "white",
     lw: float = 1.0,
 ) -> None:
-    frequeny = get_frequency(header) * u.GHz
-    pb_noema = pb_telecope(frequeny, telescope="NOEMA")
+    frequency = get_frequency(header) * u.GHz
+    pb_noema = pb_telecope(frequency, telescope="NOEMA")
     circ = SphericalCircle(
-        (ra0 * u.deg, dec0 * u.deg),
+        (ra0, dec0),
         pb_noema / 2.0,
         ls=(0, (5, 10)),
         lw=lw,
@@ -673,8 +675,8 @@ def plot_continuum_panel(
     color_map: Colormap | str = "inferno",
     vmin: float | None = None,
     vmax: float | None = None,
-    ra0: float | None = None,
-    dec0: float | None = None,
+    ra0: u.Quantity | None = None,
+    dec0: u.Quantity | None = None,
     show_pb: bool = True,
     do_marker: bool = False,
     do_outflow: bool = False,
@@ -723,6 +725,7 @@ def plot_continuum_panel(
     if show_pb:
         if ra0 is None or dec0 is None:
             raise ValueError("ra0 and dec0 are required when show_pb is True.")
+        print(f"Plotting primary beam at ra0={ra0}, dec0={dec0}")
         plot_PB(ax, header, ra0, dec0, color="white", lw=1.0)
         plot_PB(ax, header, ra0, dec0, color="black", lw=0.5)
 
@@ -752,7 +755,7 @@ def plot_continuum_panel(
 def hide_axis_labels(ax: Axes, hide_x: bool = True, hide_y: bool = True) -> None:
     # use the offset overlay coords (set by prodige_style with do_offsets=True) if present,
     # since those - not ax.coords - carry the visible tick/axis labels in that mode
-    lon, lat = getattr(ax, "_offset_coords", (ax.coords[0], ax.coords[1]))
+    lon, lat = getattr(ax, "_offset_coords", (ax.coords[0], ax.coords[1]))  # type: ignore[reportUnknownMemberType]
     if hide_x:
         lon.set_ticklabel_visible(False)
         lon.set_axislabel("")
@@ -766,7 +769,7 @@ def prepare_continuum_panel(
     bb: str,
     data_directory: str,
     mosaic: bool = False,
-) -> tuple[NDArray[np.float64], Header, WCS, float, float, float]:
+) -> tuple[NDArray[np.float64], Header, WCS, float, u.Quantity, u.Quantity]:
     """
     Load and preprocess the continuum data needed to draw one panel with
     plot_continuum_panel. The WCS is returned separately since it is needed
@@ -844,10 +847,10 @@ def plot_continuum_grid(
     n_panels = len(panels)
     nrows = int(np.ceil(n_panels / ncols))
     panel_width, panel_height = panel_size
-    fig = plt.figure(figsize=(panel_width * ncols + 1, panel_height * nrows + 1))
-    gs = fig.add_gridspec(nrows, ncols, hspace=0.0, wspace=0.0)
+    fig = plt.figure(figsize=(panel_width * ncols + 1, panel_height * nrows + 1))  # type: ignore[reportUnknownMemberType]
+    gs = fig.add_gridspec(nrows, ncols, hspace=0.0, wspace=0.0)  # type: ignore[reportUnknownMemberType]
 
-    axs = []
+    axs: list[Axes] = []
     for index, (region, bb) in enumerate(panels):
         row, col = divmod(index, ncols)
         data_cont, header, wcs_cont, noise_cont, ra0, dec0 = prepare_continuum_panel(
@@ -886,10 +889,10 @@ def plot_continuum_grid(
                 transform=ax.transAxes,
                 color=label_col,
                 verticalalignment="top",
-            )
+            )  # type: ignore[reportUnknownMemberType]
             label_text.set_path_effects(
                 [PathEffects.withStroke(linewidth=1.0, foreground=label_col_back)]
-            )
+            )  # type: ignore[reportUnknownMemberType]
 
         if show_colorbar:
             wavelength = get_wavelength(header)
@@ -898,7 +901,7 @@ def plot_continuum_grid(
                 ax,
                 im,
                 label=r"$I_{"
-                + str(wavelength.value)
+                + str(wavelength.value)  # type: ignore[reportUnknownMemberType]
                 + "\\, \\rm mm}$ (mJy\\,beam$^{-1}$)",
                 label_fontsize=8,
                 nbins=4,
@@ -911,7 +914,7 @@ def plot_continuum_grid(
             format="pdf",
             bbox_inches="tight",
             pad_inches=0.01,
-        )
+        )  # type: ignore[reportUnknownMemberType]
         plt.close(fig)
 
     return fig, axs
@@ -959,7 +962,7 @@ def plot_continuum(
     """
     # plot continuum in color and contours, add source names, add outflow directions
     # use general plot parameters
-    plt.rcParams.update(pyplot_params)
+    plt.rcParams.update(pyplot_params)  # type: ignore[reportUnknownMemberType]
     color_map = prepare_color_map(cmap, color_nan)
     # figure size from dictionary
     fig_width, fig_height = get_figsize(region)
@@ -975,8 +978,8 @@ def plot_continuum(
     wcs_cont = WCS(hd_cont)
 
     # create figure
-    fig = plt.figure(1, figsize=(fig_width, fig_height))
-    ax = plt.subplot(1, 1, 1, projection=wcs_cont)
+    fig = plt.figure(1, figsize=(fig_width, fig_height))  # type: ignore[reportUnknownMemberType]
+    ax: Axes = plt.subplot(1, 1, 1, projection=wcs_cont)  # type: ignore[reportUnknownMemberType]
 
     im = plot_continuum_panel(
         data_cont,
@@ -1035,7 +1038,7 @@ def plot_line_mom0(
     bkgrd_col_TdV: str = "black",
 ) -> None:
     # use general plot parameters
-    plt.rcParams.update(pyplot_params)
+    plt.rcParams.update(pyplot_params)  # type: ignore[reportUnknownMemberType]
     color_map = prepare_color_map(cmap, color_nan)
     # figure size from dictionary
     fig_width, fig_height = get_figsize(region)
@@ -1048,8 +1051,8 @@ def plot_line_mom0(
     wcs_TdV = WCS(hd_TdV)
 
     # create figure
-    fig = plt.figure(1, figsize=(fig_width, fig_height))
-    ax = plt.subplot(1, 1, 1, projection=wcs_TdV)
+    fig: Figure = plt.figure(1, figsize=(fig_width, fig_height))  # type: ignore[reportUnknownMemberType]
+    ax: Axes = plt.subplot(1, 1, 1, projection=wcs_TdV)  # type: ignore[reportUnknownMemberType]
     # plot continuum in color
     ax.imshow(
         data,
@@ -1131,7 +1134,7 @@ def plot_line_vlsr(
     save_fig: if True, the figure is saved to disk
     """
     # use general plot parameters
-    plt.rcParams.update(pyplot_params)
+    plt.rcParams.update(pyplot_params)  # type: ignore[reportUnknownMemberType]
     color_map = prepare_color_map(cmap, color_nan)
     # figure size from dictionary
     fig_width, fig_height = get_figsize(region)
@@ -1143,7 +1146,7 @@ def plot_line_vlsr(
 
     # load velocity data
     hdu = load_cutout(data_directory + file_name, source=region, is_hdu=False)
-    data = hdu.data
+    data: NDArray[np.float64] = hdu.data
     # load integrated intensity data
     data_TdV, noise_map, hd_TdV = load_line_TdV(data_directory + file_TdV, region)
     if vmin == None and vmax == None:
@@ -1160,8 +1163,8 @@ def plot_line_vlsr(
     wcs_Vlsr = WCS(hdu.header)
 
     # create figure
-    fig = plt.figure(1, figsize=(fig_width, fig_height))
-    ax = plt.subplot(1, 1, 1, projection=wcs_Vlsr)
+    fig: Figure = plt.figure(1, figsize=(fig_width, fig_height))
+    ax: Axes = plt.subplot(1, 1, 1, projection=wcs_Vlsr)
     # plot continuum in color
     im = ax.imshow(
         data,

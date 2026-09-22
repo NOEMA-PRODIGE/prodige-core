@@ -1,11 +1,21 @@
 from __future__ import annotations
 
-from contextlib import nullcontext as does_not_raise
+from collections.abc import Callable
+from contextlib import (
+    AbstractContextManager,
+)
+from contextlib import (
+    nullcontext as does_not_raise,
+)
+from typing import Any
 
 import pytest
+from astropy.io import fits
 
 import prodige_core.source_catalogue
 from prodige_core.source_catalogue import region_dic
+
+SampleImageFactory = Callable[[bool], fits.PrimaryHDU]
 
 
 @pytest.mark.parametrize(
@@ -15,7 +25,9 @@ from prodige_core.source_catalogue import region_dic
         ("B1-bS", does_not_raise()),
     ],
 )
-def test_validate_source_id(source_id, expected_raise) -> None:
+def test_validate_source_id(
+    source_id: str, expected_raise: AbstractContextManager[Any]
+) -> None:
     with expected_raise:
         assert prodige_core.source_catalogue.validate_source_id(source_id) is not None
 
@@ -35,7 +47,7 @@ def test_get_region_names() -> None:
     assert len(source_name) == len(list(region_dic))
 
 
-def test_load_cutout(sample_image) -> None:
+def test_load_cutout(sample_image: SampleImageFactory) -> None:
     with pytest.raises(ValueError):
         prodige_core.source_catalogue.load_cutout("test.fits", source="test")
     # dir = tmp_path / "sub"
@@ -51,16 +63,16 @@ def test_load_cutout(sample_image) -> None:
         hdu_3d, source="B1-bS", is_hdu=True
     )
     assert (hdu_2d_new.header["NAXIS1"] == 200) and (hdu_2d_new.header["NAXIS2"] == 200)
-    assert (hdu_2d_new.header["CRVAL1"] == pytest.approx(ra0)) and (
-        hdu_2d_new.header["CRVAL2"] == pytest.approx(dec0)
+    assert (hdu_2d_new.header["CRVAL1"] == pytest.approx(ra0.value)) and (
+        hdu_2d_new.header["CRVAL2"] == pytest.approx(dec0.value)
     )
     assert (hdu_2d_new.header) == (hdu_new_3d.header)
 
 
 def test_get_region_center() -> None:
     ra0, dec0 = prodige_core.source_catalogue.get_region_center("L1448N")
-    assert (ra0 == pytest.approx((3 + (25 + 36.44 / 60.0) / 60.0) * 15.0)) and (
-        dec0 == pytest.approx(30 + (45 + 18.3 / 60.0) / 60.0)
+    assert (ra0.value == pytest.approx((3 + (25 + 36.44 / 60.0) / 60.0) * 15.0)) and (
+        dec0.value == pytest.approx(30 + (45 + 18.3 / 60.0) / 60.0)
     )
 
 
@@ -77,7 +89,9 @@ def test_get_figsize() -> None:
         ("B1-bS", does_not_raise()),
     ],
 )
-def test_get_region_vlsr(source_id, expected_raise) -> None:
+def test_get_region_vlsr(
+    source_id: str, expected_raise: AbstractContextManager[Any]
+) -> None:
     v_lsr = prodige_core.source_catalogue.get_region_vlsr("B1-bS")
     assert v_lsr == 6.75
     with expected_raise:
