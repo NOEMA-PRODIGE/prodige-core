@@ -5,8 +5,6 @@ from typing import cast
 import numpy as np
 from astropy import units as u
 from astropy.coordinates import SkyCoord
-from astropy.io import fits
-from astropy.io.fits import PrimaryHDU
 from astropy.nddata.utils import Cutout2D
 from astropy.wcs import WCS
 from numpy.typing import NDArray
