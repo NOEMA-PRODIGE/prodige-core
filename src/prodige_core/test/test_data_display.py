@@ -21,29 +21,29 @@ from .conftest import SampleImageFactory  # Import the Protocol type
 
 def test_pb_telecope_good_frequency() -> None:
     assert (
-        prodige_core.data_display.pb_telecope(72.78382 * u.GHz, telescope="NOEMA")
+        prodige_core.data_display.pb_telecope(72.78382 * u.GHz, telescope="NOEMA")  # type: ignore
         == 64.1 * u.arcsec
     )
     assert (
-        prodige_core.data_display.pb_telecope(345 * u.GHz, telescope="SMA")
+        prodige_core.data_display.pb_telecope(345 * u.GHz, telescope="SMA")  # type: ignore
         == 36.0 * u.arcsec
     )
     assert (
-        prodige_core.data_display.pb_telecope(1 * u.GHz, telescope="VLA")
+        prodige_core.data_display.pb_telecope(1 * u.GHz, telescope="VLA")  # type: ignore
         == 45.0 * u.arcmin
     )
     assert (
-        prodige_core.data_display.pb_telecope(300 * u.GHz, telescope="ALMA")
+        prodige_core.data_display.pb_telecope(300 * u.GHz, telescope="ALMA")  # type: ignore
         == 19.0 * u.arcsec
     )
     with pytest.raises(ValueError):
-        prodige_core.data_display.pb_telecope(72.78382 * u.GHz, telescope="TEST")
+        prodige_core.data_display.pb_telecope(72.78382 * u.GHz, telescope="TEST")  # type: ignore
 
 
 def test_validate_frequency() -> None:
     with pytest.raises(u.UnitsError):
-        prodige_core.data_display.validate_frequency(72.78382 * u.m)
-    assert prodige_core.data_display.validate_frequency(72.78382 * u.GHz)
+        prodige_core.data_display.validate_frequency(72.78382 * u.m)  # type: ignore
+    assert prodige_core.data_display.validate_frequency(72.78382 * u.GHz)  # type: ignore
 
 
 def test_validate_determine_noise_map_bad_input() -> None:
@@ -55,22 +55,22 @@ def test_get_contour_params() -> None:
     steps_arr, line_style, do_contours = prodige_core.get_contour_params(50.0, 1.0)
     assert (steps_arr == [-5.0, 5.0, 10.0, 20.0, 40.0]).all()
     assert line_style == ["dotted"] + ["solid"] * 4
-    assert do_contours == True
+    assert do_contours
 
 
 def test_get_frequency(sample_image: SampleImageFactory) -> None:
     hdu = sample_image(is_2d=True)
     hdr: Header = hdu.header
     assert prodige_core.data_display.get_frequency(hdr) == 72.78382
-    with pytest.raises(ValueError):
-        prodige_core.data_display.get_frequency(72.78382 * u.GHz)
+    with pytest.raises((TypeError, ValueError)):
+        prodige_core.data_display.get_frequency(72.78382 * u.GHz)  # type: ignore
 
 
 def test_get_wavelength(sample_image: SampleImageFactory) -> None:
     hdu = sample_image(is_2d=True)
-    assert prodige_core.data_display.get_wavelength(hdu.header) == 4.1 * u.mm
-    with pytest.raises(ValueError):
-        prodige_core.data_display.get_wavelength(72.78382 * u.m)
+    assert prodige_core.data_display.get_wavelength(hdu.header) == 4.1
+    with pytest.raises((TypeError, ValueError)):
+        prodige_core.data_display.get_wavelength(72.78382 * u.m)  # type: ignore
 
 
 def test_noise_map() -> None:

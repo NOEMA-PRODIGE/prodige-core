@@ -47,6 +47,11 @@ def determine_noise_map(data_2d: NDArray[np.float64]) -> float:
     """
     Determine the noise in the continuum data.
     """
+    # Ensure input is numeric before passing to Astropy
+    if not isinstance(data_2d, np.ndarray) or not np.issubdtype(
+        data_2d.dtype, np.number
+    ):
+        raise ValueError("Input data must be a numeric numpy array.")
     # compute noise in continuum data
     _, _, noise_2dmap = sigma_clipped_stats(data_2d, sigma=3.0)
     return noise_2dmap
@@ -725,7 +730,6 @@ def plot_continuum_panel(
     if show_pb:
         if ra0 is None or dec0 is None:
             raise ValueError("ra0 and dec0 are required when show_pb is True.")
-        print(f"Plotting primary beam at ra0={ra0}, dec0={dec0}")
         plot_PB(ax, header, ra0, dec0, color="white", lw=1.0)
         plot_PB(ax, header, ra0, dec0, color="black", lw=0.5)
 
@@ -900,9 +904,7 @@ def plot_continuum_grid(
                 fig,
                 ax,
                 im,
-                label=r"$I_{"
-                + str(wavelength.value)  # type: ignore[reportUnknownMemberType]
-                + "\\, \\rm mm}$ (mJy\\,beam$^{-1}$)",
+                label=r"$I_{" + str(wavelength) + "\\, \\rm mm}$ (mJy\\,beam$^{-1}$)",
                 label_fontsize=8,
                 nbins=4,
                 width=0.015,
@@ -1006,7 +1008,7 @@ def plot_continuum(
         fig,
         ax,
         im,
-        label=r"$I_{" + str(wavelength.value) + "\\, \\rm mm}$ (mJy\\,beam$^{-1}$)",
+        label=r"$I_{" + str(wavelength) + "\\, \\rm mm}$ (mJy\\,beam$^{-1}$)",
     )
     # save plot
     if save_fig:
