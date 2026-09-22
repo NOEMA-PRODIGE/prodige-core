@@ -1,24 +1,22 @@
 from __future__ import annotations
 
 import numpy as np
-from numpy.typing import NDArray
-
-from astropy.coordinates import SkyCoord
-from astropy.nddata.utils import Cutout2D
-
 from astropy import units as u
+from astropy.coordinates import SkyCoord
 from astropy.io import fits
+from astropy.nddata.utils import Cutout2D
 from astropy.wcs import WCS
-
+from numpy.typing import NDArray
 
 try:
     # from importlib.resources import files
-    from importlib.resources import files, as_file
+    from importlib.resources import as_file, files
 except ImportError:
-    from importlib_resources import files, as_file
+    from importlib_resources import as_file, files
+
+from pathlib import Path
 
 from .config import source_filename
-from pathlib import Path
 
 data_file_path: Path
 
@@ -413,9 +411,9 @@ def get_region_vlsr(source: str) -> float:
     return vlsr_source[idx][0]
 
 
-def get_outflow_information() -> (
-    tuple[list[str], list[str], list[str], np.ndarray, np.ndarray]
-):
+def get_outflow_information() -> tuple[
+    list[str], list[str], list[str], np.ndarray, np.ndarray
+]:
     """
     Convenience function to get the list of region center for a given source.
     """

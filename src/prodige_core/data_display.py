@@ -1,32 +1,42 @@
 from __future__ import annotations
-import numpy as np
 
-from astropy.coordinates import SkyCoord
-from astropy import units as u
-from astropy.io import fits
-from astropy.wcs import WCS
-from astropy.visualization.wcsaxes import SphericalCircle, add_beam, add_scalebar
-from astropy.stats import sigma_clipped_stats
-
-import matplotlib.pyplot as plt
-from matplotlib import ticker
+import matplotlib
 import matplotlib.patheffects as PathEffects
+from matplotlib.colors import Colormap
 
-from .source_catalogue import (
-    load_sources_table,
-    load_cutout,
-    get_figsize,
-    get_region_center,
-    get_outflow_information,
-    get_region_vlsr,
-)
+matplotlib.use("Agg", force=True)
+# try:
+#     _ = matplotlib.get_backend()
+# except Exception:
+import matplotlib.pyplot as plt
+import numpy as np
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+from astropy.io import fits
+from astropy.io.fits import Header
+from astropy.stats import sigma_clipped_stats
+from astropy.visualization.wcsaxes import SphericalCircle, add_beam, add_scalebar
+from astropy.wcs import WCS
+from matplotlib import ticker
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from matplotlib.image import AxesImage
+from numpy.typing import NDArray
 
 from .config import (
-    pyplot_params,
-    distance,
     cmap_default,
     cmap_mom0_default,
     cmap_vlsr_default,
+    distance,
+    pyplot_params,
+)
+from .source_catalogue import (
+    get_figsize,
+    get_outflow_information,
+    get_region_center,
+    get_region_vlsr,
+    load_cutout,
+    load_sources_table,
 )
 
 # name of the region
@@ -119,7 +129,7 @@ def filename_line_vlsr(region: str, linename: str, mosaic: bool = False) -> str:
 def load_continuum_data(
     datafile: str,
     region: str,
-) -> tuple[np.ndarray, float, fits.header.Header]:
+) -> tuple[NDArray[np.float64], float, Header]:
     """
     Function to load the continuum data and return the cutout specified in the dictionary.
     It return the data, estimated noise, and the FITS header.
@@ -151,7 +161,7 @@ def load_continuum_data(
 def load_line_TdV(
     datafile: str,
     region: str,
-) -> tuple[np.ndarray, float, fits.header.Header]:
+) -> tuple[NDArray[np.float64], float, Header]:
     """
     Function to load the integrated intensity map and return the cutout specified in the dictionary.
     It return the data, estimated noise, and the FITS header.
@@ -183,7 +193,7 @@ def load_line_TdV(
     return data, noise_map, header
 
 
-def get_frequency(header: fits.header.Header) -> float:
+def get_frequency(header: Header) -> float:
     """
     Function to get the frequency from the header and convert it to GHz.
     Parameters:
@@ -199,7 +209,7 @@ def get_frequency(header: fits.header.Header) -> float:
     return restfreq * 1e-9
 
 
-def get_wavelength(header: fits.header.Header) -> float:
+def get_wavelength(header: Header) -> float:
     """
     Function to get the wavelength from the header.
     Parameters:
@@ -213,7 +223,9 @@ def get_wavelength(header: fits.header.Header) -> float:
     return np.around(wavelength, decimals=1)  # mm
 
 
-def prodige_style(ax: plt.Axes, do_offsets: bool = False, center_coord=None) -> None:
+def prodige_style(
+    ax: Axes, do_offsets: bool = False, center_coord: SkyCoord | None = None
+) -> None:
     """
     Setting a common style for the plots. This includes axis labels, tick labels, and minor ticks.
     Pararameters:
@@ -270,11 +282,13 @@ def prodige_style(ax: plt.Axes, do_offsets: bool = False, center_coord=None) -> 
         ra_offset.set_minor_frequency(5)
         dec_offset.set_ticks(spacing=15 * u.arcsec, color="black")
         ra_offset.set_ticks(spacing=15 * u.arcsec, color="black")
+        # remember the overlay coords, since they (not ax.coords) carry the visible labels
+        ax._offset_coords = (ra_offset, dec_offset)
 
 
 def annotate_sources(
-    ax: plt.Axes,
-    wcs: WCS.wcs,
+    ax: Axes,
+    wcs: WCS,
     color: str = "cornflowerblue",
     color_back: str = "black",
     marker: bool = False,
@@ -365,8 +379,8 @@ def annotate_sources(
 
 
 def annotate_outflow(
-    ax: plt.Axes,
-    wcs: WCS.wcs,
+    ax: Axes,
+    wcs: WCS,
     arrow_width: float = 1.0,
     arrow_length: u.Quantity = 3 * u.arcsec,
     arrow_offset: u.Quantity = 0.05 * u.arcsec,
@@ -482,11 +496,12 @@ def pb_telecope(frequency: u.Hz, telescope: str = "NOEMA") -> u.degree:
 
 
 def plot_PB(
-    ax: plt.Axes,
-    header: fits.header.Header,
+    ax: Axes,
+    header: Header,
     ra0: float,
     dec0: float,
     color: str = "white",
+    lw: float = 1.0,
 ) -> None:
     frequeny = get_frequency(header) * u.GHz
     pb_noema = pb_telecope(frequeny, telescope="NOEMA")
@@ -494,7 +509,7 @@ def plot_PB(
         (ra0 * u.deg, dec0 * u.deg),
         pb_noema / 2.0,
         ls=(0, (5, 10)),
-        lw=1.0,
+        lw=lw,
         edgecolor=color,
         facecolor="none",
         transform=ax.get_transform("fk5"),
@@ -502,19 +517,332 @@ def plot_PB(
     ax.add_patch(circ)
 
 
+def plot_continuum_panel(
+    data_cont: NArray[np.float64],
+    header: Header,
+    wcs: WCS,
+    ax: Axes,
+    noise_cont: float,
+    color_map: Colormap | str = "inferno",
+    vmin: float | None = None,
+    vmax: float | None = None,
+    ra0: float | None = None,
+    dec0: float | None = None,
+    show_pb: bool = True,
+    do_marker: bool = False,
+    do_outflow: bool = False,
+    do_annotation: bool = True,
+    show_beam: bool = True,
+    label_col: str = "black",
+    do_offsets: bool = False,
+) -> AxesImage:
+    """
+    Draw a single continuum panel (image, contours, PB, annotations, scalebar, beam)
+    into an existing axis. Does not create a figure, colorbar, or save to disk, so it
+    can be reused in a loop to build multipanel figures.
+    Parameters:
+    data_cont: continuum data (e.g., from load_continuum_data)
+    header: FITS header matching data_cont
+    wcs: WCS matching data_cont, used for the transforms and PB/contour overlays
+    ax: axis to draw into (must already be created with projection=wcs)
+    color_map: colormap instance to use for the image
+    noise_cont: estimated noise in data_cont, used for contour levels
+    vmin, vmax: color scale limits. If None, defaults to -5*noise_cont and 0.3*max(data_cont)
+    ra0, dec0: region center in degrees, required if show_pb is True or do_offsets is True
+    show_pb: if True, the primary beam circle is drawn (requires ra0, dec0)
+    do_marker: if True, markers are added to the source positions
+    do_outflow: if True, outflow orientations are added to the plot
+    do_annotation: if True, source names are added to the plot
+    show_beam: if True, the synthesized beam is drawn
+    label_col: color used for the scalebar and beam
+    do_offsets: if True, the axes are displayed as offsets from (ra0, dec0)
+
+    Returns:
+    im: the AxesImage returned by imshow, for use with fig.colorbar()
+    """
+    if vmin is None:
+        vmin = -5.0 * noise_cont
+    if vmax is None:
+        vmax = 0.3 * np.nanmax(data_cont)
+
+    im = ax.imshow(
+        data_cont,
+        origin="lower",
+        interpolation="None",
+        cmap=color_map,
+        alpha=1.0,
+        transform=ax.get_transform(wcs),
+        vmin=vmin,
+        vmax=vmax,
+    )
+    if show_pb:
+        if ra0 is None or dec0 is None:
+            raise ValueError("ra0 and dec0 are required when show_pb is True.")
+        plot_PB(ax, header, ra0, dec0, color="white", lw=1.0)
+        plot_PB(ax, header, ra0, dec0, color="black", lw=0.5)
+
+    # add continuum contour levels
+    cont_levels, style_levels, valid_contour = get_contour_params(
+        np.nanmax(data_cont), noise_cont
+    )
+    if valid_contour:
+        ax.contour(
+            data_cont,
+            colors="white",
+            alpha=1.0,
+            levels=cont_levels,
+            linestyles=style_levels,
+            linewidths=0.75,
+            transform=ax.get_transform(wcs),
+        )
+        ax.contour(
+            data_cont,
+            colors="black",
+            alpha=1.0,
+            levels=cont_levels,
+            linestyles=style_levels,
+            linewidths=0.35,
+            transform=ax.get_transform(wcs),
+        )
+
+    # annotate source names
+    ax.autoscale(enable=False)
+    if do_annotation:
+        annotate_sources(
+            ax,
+            wcs,
+            color="white",
+            color_back="black",
+            fontsize=10,
+            marker=do_marker,
+            label=True,
+            label_offset=4.0 * u.arcsec,
+            connect_line=True,
+        )
+
+    # add outflow orientations
+    if do_outflow:
+        annotate_outflow(ax, wcs, arrow_width=2.0)
+
+    # add linear scale bar (1000 au)
+    length = (1e3 * u.au / (distance * u.pc)).to(u.deg, u.dimensionless_angles())
+    add_scalebar(ax, length, label=r"1\,000 au", color=label_col, corner="bottom right")
+    scalebar = ax.artists[-1]  # get the last added artist, which is the scalebar
+    scalebar.txt_label._text.set_path_effects(
+        [PathEffects.withStroke(linewidth=1.0, foreground="white")]
+    )
+    scalebar.size_bar.get_children()[0].set_path_effects(
+        [PathEffects.withStroke(linewidth=2.0, foreground="white")]
+    )
+    # add beam
+    if show_beam:
+        add_beam(
+            ax,
+            header=header,
+            frame=False,
+            pad=0.2,
+            color=label_col,
+            corner="bottom left",
+        )
+
+    if do_offsets:
+        if ra0 is None or dec0 is None:
+            raise ValueError("ra0 and dec0 are required when do_offsets is True.")
+        center_coord = SkyCoord(ra=ra0, dec=dec0, unit=(u.deg, u.deg))
+    else:
+        center_coord = None
+    prodige_style(ax, do_offsets=do_offsets, center_coord=center_coord)
+    return im
+
+
+def hide_axis_labels(ax: Axes, hide_x: bool = True, hide_y: bool = True) -> None:
+    # use the offset overlay coords (set by prodige_style with do_offsets=True) if present,
+    # since those - not ax.coords - carry the visible tick/axis labels in that mode
+    lon, lat = getattr(ax, "_offset_coords", (ax.coords[0], ax.coords[1]))
+    if hide_x:
+        lon.set_ticklabel_visible(False)
+        lon.set_axislabel("")
+    if hide_y:
+        lat.set_ticklabel_visible(False)
+        lat.set_axislabel("")
+
+
+def prepare_continuum_panel(
+    region: str,
+    bb: str,
+    data_directory: str,
+    mosaic: bool = False,
+) -> tuple[NDArray[np.float64], Header, WCS, float, float, float]:
+    """
+    Load and preprocess the continuum data needed to draw one panel with
+    plot_continuum_panel. The WCS is returned separately since it is needed
+    to create the axis (projection=wcs) before the panel can be drawn.
+    Parameters:
+    region: name of the region
+    bb: baseband of the data (lo, li, ui, uo)
+    data_directory: directory where the data is stored
+    mosaic: if True, mosaic data is used. This changes the filename format of the data.
+
+    Returns:
+    data_cont, header, wcs_cont, noise_cont, ra0, dec0
+    """
+    file_name = filename_continuum(region, bb, mosaic)
+    data_cont, noise_cont, header = load_continuum_data(
+        data_directory + file_name, region
+    )
+    wcs_cont = WCS(header)
+    ra0, dec0 = get_region_center(region)
+    return data_cont, header, wcs_cont, noise_cont, ra0, dec0
+
+
+def plot_continuum_grid(
+    panels: list[tuple[str, str]],
+    data_directory: str,
+    fig_directory: str = "./",
+    fig_name: str = "continuum_grid.pdf",
+    ncols: int = 3,
+    panel_size: tuple[float, float] = (3.0, 2.7),
+    cmap: Colormap | str = cmap_default,
+    color_nan: str = "0.1",
+    vmin: float | None = None,
+    vmax: float | None = None,
+    mosaic: bool = False,
+    do_marker: bool = False,
+    do_outflow: bool = False,
+    do_annotation: bool = True,
+    do_offsets: bool = False,
+    labels: list[str] | None = None,
+    label_col: str = "black",
+    show_colorbar: bool = True,
+    save_fig: bool = True,
+) -> tuple[Figure, list[Axes]]:
+    """
+    Plot a grid of continuum panels, one per (region, bb) pair in `panels`.
+    Each panel keeps its own WCS projection, since different regions/basebands
+    are not guaranteed to share a common pointing or pixel grid.
+    Parameters:
+    panels: list of (region, bb) tuples, one entry per panel
+    data_directory: directory where the data is stored
+    fig_directory: directory where the figure will be stored
+    fig_name: filename of the saved figure
+    ncols: number of columns in the grid
+    panel_size: (width, height) in inches of a single panel
+    cmap: colormap for the plot (default is the one listed in config.py)
+    color_nan: color for NaN values
+    vmin, vmax: shared color scale limits. If None, computed per panel as in plot_continuum
+    mosaic: if True, mosaic data is used for all panels
+    do_marker: if True, markers are added to the source positions
+    do_outflow: if True, outflow orientations are added to the plot
+    do_annotation: if True, source names are added to the plot
+    do_offsets: if True, the axes are displayed as offsets from the region center
+    labels: optional list of text labels, one per panel
+    label_col: color used for the scale bar, beam, and panel labels
+    show_colorbar: if True, a colorbar is added to each panel
+    save_fig: if True, the figure is saved to disk
+
+    Returns:
+    fig, axs: the created figure and the list of axes (one per panel)
+    """
+    plt.rcParams.update(pyplot_params)
+    color_map = plt.get_cmap(cmap).copy()
+    color_map.set_bad(color=color_nan)
+
+    n_panels = len(panels)
+    nrows = int(np.ceil(n_panels / ncols))
+    panel_width, panel_height = panel_size
+    fig = plt.figure(figsize=(panel_width * ncols + 1, panel_height * nrows + 1))
+    gs = fig.add_gridspec(nrows, ncols, hspace=0.0, wspace=0.0)
+
+    axs = []
+    for index, (region, bb) in enumerate(panels):
+        row, col = divmod(index, ncols)
+        data_cont, header, wcs_cont, noise_cont, ra0, dec0 = prepare_continuum_panel(
+            region, bb, data_directory, mosaic
+        )
+
+        ax: Axes = fig.add_subplot(gs[row, col], projection=wcs_cont)
+        axs.append(ax)
+        im = plot_continuum_panel(
+            data_cont,
+            header,
+            wcs_cont,
+            ax,
+            noise_cont,
+            color_map=color_map,
+            vmin=vmin,
+            vmax=vmax,
+            ra0=ra0,
+            dec0=dec0,
+            show_pb=not mosaic,
+            do_marker=do_marker,
+            do_outflow=do_outflow,
+            do_annotation=do_annotation,
+            show_beam=True,
+            label_col=label_col,
+            do_offsets=do_offsets,
+        )
+        hide_axis_labels(ax, hide_x=(row == 0) | (col != 0), hide_y=(col != 0))
+
+        if labels is not None:
+            label_text = ax.text(
+                0.05,
+                0.95,
+                labels[index],
+                transform=ax.transAxes,
+                color=label_col,
+                verticalalignment="top",
+            )
+            label_text.set_path_effects(
+                [PathEffects.withStroke(linewidth=1.0, foreground=label_col_back)]
+            )
+
+        if show_colorbar:
+            wavelength = get_wavelength(header)
+            cax = fig.add_axes(
+                [
+                    ax.get_position().x1 + 0.005,
+                    ax.get_position().y0,
+                    0.015,
+                    ax.get_position().height,
+                ]
+            )
+            cb = fig.colorbar(im, cax=cax)
+            cb.set_label(
+                r"$I_{" + str(wavelength.value) + "\\, \\rm mm}$ (mJy\\,beam$^{-1}$)",
+                fontsize=8,
+            )
+            cb.ax.yaxis.set_tick_params(
+                color="black", labelcolor="black", direction="out"
+            )
+            cb.ax.locator_params(nbins=4)
+            cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.0f}"))
+
+    if save_fig:
+        fig.savefig(
+            fig_directory + fig_name,
+            format="pdf",
+            bbox_inches="tight",
+            pad_inches=0.01,
+        )
+        plt.close(fig)
+
+    return fig, axs
+
+
 def plot_continuum(
     region: str,
     bb: str,
     data_directory: str,
     fig_directory: str = "./",
-    cmap: str | None = None,
+    cmap: Colormap | str = cmap_default,
     color_nan: str = "0.1",
-    vmin: float = None,
-    vmax: float = None,
+    vmin: float | None = None,
+    vmax: float | None = None,
     mosaic: bool = False,
     do_marker: bool = False,
     do_outflow: bool = False,
     do_annotation: bool = True,
+    do_offsets: bool = False,
     save_fig: bool = True,
 ) -> None:
     """
@@ -533,15 +861,13 @@ def plot_continuum(
     do_marker: if True, markers are added to the source positions
     do_outflow: if True, outflow orientations are added to the plot
     do_annotation: if True, source names are added to the plot
+    do_offsets: if True, the axes are displayed as offsets from the region center
 
     Returns:
     A PDF file with the continuum plot is saved on disk with the following name
              'continuum_' + region + '_' + bb + '.pdf'
     """
     # plot continuum in color and contours, add source names, add outflow directions
-
-    if cmap == None:
-        cmap = cmap_default
     # use general plot parameters
     plt.rcParams.update(pyplot_params)
     color_map = plt.get_cmap(cmap).copy()
@@ -566,65 +892,25 @@ def plot_continuum(
     fig = plt.figure(1, figsize=(fig_width, fig_height))
     ax = plt.subplot(1, 1, 1, projection=wcs_cont)
 
-    # plot continuum in color
-    im = ax.imshow(
+    im = plot_continuum_panel(
         data_cont,
-        origin="lower",
-        interpolation="None",
-        cmap=color_map,
-        alpha=1.0,
-        transform=ax.get_transform(wcs_cont),
+        hd_cont,
+        wcs_cont,
+        ax,
+        noise_cont,
+        color_map=color_map,
         vmin=vmin,
         vmax=vmax,
+        ra0=ra0,
+        dec0=dec0,
+        show_pb=not mosaic,
+        do_marker=do_marker,
+        do_outflow=do_outflow,
+        do_annotation=do_annotation,
+        show_beam=True,
+        label_col=label_col,
+        do_offsets=do_offsets,
     )
-    if mosaic == False:
-        plot_PB(ax, hd_cont, ra0, dec0)
-
-    # add continuum contour levels
-    cont_levels, style_levels, valid_contour = get_contour_params(
-        np.nanmax(data_cont), noise_cont
-    )
-
-    if valid_contour:
-        ax.contour(
-            data_cont,
-            colors="white",
-            alpha=1.0,
-            levels=cont_levels,
-            linestyles=style_levels,
-            linewidths=0.75,
-            transform=ax.get_transform(wcs_cont),
-        )
-
-        ax.contour(
-            data_cont,
-            colors="black",
-            alpha=1.0,
-            levels=cont_levels,
-            linestyles=style_levels,
-            linewidths=0.35,
-            transform=ax.get_transform(wcs_cont),
-        )
-
-    # annotate source names
-    ax.autoscale(enable=False)
-    if do_annotation == True:
-        annotate_sources(
-            ax,
-            wcs_cont,
-            color="white",
-            color_back="black",
-            fontsize=10,
-            marker=do_marker,
-            label=True,
-            label_offset=4.0 * u.arcsec,
-            connect_line=True,
-        )
-
-    # add outflow orientations
-    if do_outflow:
-        annotate_outflow(ax, wcs_cont, arrow_width=2.0)
-    prodige_style(ax)
     # Get coordinates for colorbar
     cax = fig.add_axes(
         [
@@ -642,13 +928,6 @@ def plot_continuum(
 
     # cb.locator = MultipleLocator(10.0)
     cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.0f}"))
-    # add linear scale bar (1000 au)
-    length = (1e3 * u.au / (distance * u.pc)).to(u.deg, u.dimensionless_angles())
-    add_scalebar(ax, length, label=r"1\,000 au", color=label_col, corner="bottom right")
-    # add beam
-    add_beam(
-        ax, header=hd_cont, frame=False, pad=0.2, color=label_col, corner="bottom left"
-    )
     # save plot
     if save_fig:
         plt.savefig(
@@ -666,10 +945,10 @@ def plot_line_mom0(
     bb: str,
     data_directory: str,
     fig_directory: str = "./",
-    cmap: str | None = None,
+    cmap: Colormap | str = cmap_mom0_default,
     color_nan: str = "0.1",
-    vmin: float = None,
-    vmax: float = None,
+    vmin: float | None = None,
+    vmax: float | None = None,
     mosaic: bool = False,
     do_marker: bool = False,
     do_outflow: bool = False,
@@ -677,8 +956,6 @@ def plot_line_mom0(
     save_fig: bool = True,
 ) -> None:
     label_col_TdV = "white"
-    if cmap == None:
-        cmap = cmap_mom0_default
     # use general plot parameters
     plt.rcParams.update(pyplot_params)
     color_map = plt.get_cmap(cmap).copy()
@@ -700,7 +977,7 @@ def plot_line_mom0(
     fig = plt.figure(1, figsize=(fig_width, fig_height))
     ax = plt.subplot(1, 1, 1, projection=wcs_TdV)
     # plot continuum in color
-    im = ax.imshow(
+    ax.imshow(
         data,
         origin="lower",
         interpolation="None",
@@ -791,7 +1068,7 @@ def plot_line_mom0(
     )
     # save plot
     if save_fig:
-        plt.savefig(
+        fig.savefig(
             fig_directory + region + "_" + linename + "_TdV.pdf",
             format="pdf",
             bbox_inches="tight",
@@ -805,10 +1082,10 @@ def plot_line_vlsr(
     linename: str,
     data_directory: str,
     fig_directory: str = "./",
-    cmap: str | None = None,
+    cmap: Colormap | str = cmap_vlsr_default,
     color_nan: str = "0.1",
-    vmin: float = None,
-    vmax: float = None,
+    vmin: float | None = None,
+    vmax: float | None = None,
     mosaic: bool = False,
     do_marker: bool = False,
     do_outflow: bool = False,
@@ -837,8 +1114,6 @@ def plot_line_vlsr(
     save_fig: if True, the figure is saved to disk
     """
     label_col_Vlsr = "black"
-    if cmap == None:
-        cmap = cmap_vlsr_default
     # use general plot parameters
     plt.rcParams.update(pyplot_params)
     color_map = plt.get_cmap(cmap).copy()
@@ -885,7 +1160,6 @@ def plot_line_vlsr(
     )
     if mosaic == False:
         plot_PB(ax, hd_TdV, ra0, dec0, color=label_col_Vlsr)
-    #
     cont_levels, style_levels, valid_contour = get_contour_params(
         np.nanmax(data_TdV), noise_map
     )
