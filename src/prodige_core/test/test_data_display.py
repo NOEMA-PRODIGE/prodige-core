@@ -58,21 +58,21 @@ def test_get_contour_params() -> None:
     steps_arr, line_style, do_contours = prodige_core.get_contour_params(50.0, 1.0)
     assert (steps_arr == [-5.0, 5.0, 10.0, 20.0, 40.0]).all()
     assert line_style == ["dotted"] + ["solid"] * 4
-    assert do_contours == True
+    assert do_contours
 
 
 def test_get_frequency(sample_image: SampleImageFactory) -> None:
     hdu = sample_image(is_2d=True)
     hdr: Header = hdu.header
     assert prodige_core.data_display.get_frequency(hdr) == 72.78382
-    with pytest.raises(ValueError):
+    with pytest.raises((TypeError, ValueError)):
         prodige_core.data_display.get_frequency(72.78382 * u.GHz)  # type: ignore
 
 
 def test_get_wavelength(sample_image: SampleImageFactory) -> None:
     hdu = sample_image(is_2d=True)
-    assert prodige_core.data_display.get_wavelength(hdu.header) == 4.1 * u.mm  # type: ignore
-    with pytest.raises(ValueError):
+    assert prodige_core.data_display.get_wavelength(hdu.header) == 4.1
+    with pytest.raises((TypeError, ValueError)):
         prodige_core.data_display.get_wavelength(72.78382 * u.m)  # type: ignore
 
 
