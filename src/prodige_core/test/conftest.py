@@ -1,9 +1,11 @@
 from __future__ import annotations
-import pytest
+
 import numpy as np
-from astropy.io import fits
-import prodige_core.source_catalogue
+import pytest
 from astropy import units as u
+from astropy.io import fits
+
+import prodige_core.source_catalogue
 
 
 @pytest.fixture

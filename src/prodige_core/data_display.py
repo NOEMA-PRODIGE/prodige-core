@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from astropy import units as u
 from astropy.coordinates import SkyCoord
-from astropy.io import fits
 from astropy.io.fits import Header
 from astropy.stats import sigma_clipped_stats
 from astropy.visualization.wcsaxes import SphericalCircle, add_beam, add_scalebar
@@ -44,7 +43,7 @@ label_col = "black"
 label_col_back = "white"
 
 
-def determine_noise_map(data_2d: np.ndarray) -> float:
+def determine_noise_map(data_2d: NDArray[np.float64]) -> float:
     """
     Determine the noise in the continuum data.
     """
@@ -603,7 +602,7 @@ def plot_PB(
 def prepare_color_map(cmap: Colormap | str, color_nan: str = "0.1") -> Colormap:
     """Build a colormap instance with NaN pixels colored, shared by all panel plots."""
     color_map = plt.get_cmap(cmap).copy()
-    color_map.set_bad(color=color_nan)
+    color_map.with_extremes(bad=color_nan)
     return color_map
 
 
@@ -611,6 +610,7 @@ def add_scalebar_and_beam(
     ax: Axes,
     header: Header,
     label_col: str = "black",
+    bkgrd_col: str = "white",
     show_beam: bool = True,
     with_stroke: bool = False,
 ) -> None:
@@ -620,10 +620,10 @@ def add_scalebar_and_beam(
     if with_stroke:
         scalebar = ax.artists[-1]  # get the last added artist, which is the scalebar
         scalebar.txt_label._text.set_path_effects(
-            [PathEffects.withStroke(linewidth=1.0, foreground="white")]
+            [PathEffects.withStroke(linewidth=1.0, foreground=bkgrd_col)]
         )
         scalebar.size_bar.get_children()[0].set_path_effects(
-            [PathEffects.withStroke(linewidth=2.0, foreground="white")]
+            [PathEffects.withStroke(linewidth=2.0, foreground=bkgrd_col)]
         )
     if show_beam:
         add_beam(
@@ -681,6 +681,7 @@ def plot_continuum_panel(
     do_annotation: bool = True,
     show_beam: bool = True,
     label_col: str = "black",
+    bkgrd_col: str = "white",
     do_offsets: bool = False,
 ) -> AxesImage:
     """
@@ -730,7 +731,12 @@ def plot_continuum_panel(
         ax, wcs, do_marker=do_marker, do_outflow=do_outflow, do_annotation=do_annotation
     )
     add_scalebar_and_beam(
-        ax, header, label_col=label_col, show_beam=show_beam, with_stroke=True
+        ax,
+        header,
+        label_col=label_col,
+        bkgrd_col=bkgrd_col,
+        show_beam=show_beam,
+        with_stroke=True,
     )
 
     if do_offsets:
@@ -801,6 +807,7 @@ def plot_continuum_grid(
     do_offsets: bool = False,
     labels: list[str] | None = None,
     label_col: str = "black",
+    bkgrd_col: str = "white",
     show_colorbar: bool = True,
     save_fig: bool = True,
 ) -> tuple[Figure, list[Axes]]:
@@ -866,6 +873,7 @@ def plot_continuum_grid(
             do_annotation=do_annotation,
             show_beam=True,
             label_col=label_col,
+            bkgrd_col=bkgrd_col,
             do_offsets=do_offsets,
         )
         hide_axis_labels(ax, hide_x=(row == 0) | (col != 0), hide_y=(col != 0))
@@ -896,7 +904,7 @@ def plot_continuum_grid(
                 nbins=4,
                 width=0.015,
             )
-
+    fig.tight_layout()
     if save_fig:
         fig.savefig(
             fig_directory + fig_name,
@@ -923,6 +931,8 @@ def plot_continuum(
     do_outflow: bool = False,
     do_annotation: bool = True,
     do_offsets: bool = False,
+    label_col: str = "black",
+    bkgrd_col: str = "white",
     save_fig: bool = True,
 ) -> None:
     """
@@ -985,6 +995,7 @@ def plot_continuum(
         do_annotation=do_annotation,
         show_beam=True,
         label_col=label_col,
+        bkgrd_col=bkgrd_col,
         do_offsets=do_offsets,
     )
     # Get coordinates for colorbar
@@ -1020,8 +1031,9 @@ def plot_line_mom0(
     do_outflow: bool = False,
     do_annotation: bool = True,
     save_fig: bool = True,
+    label_col_TdV: str = "white",
+    bkgrd_col_TdV: str = "black",
 ) -> None:
-    label_col_TdV = "white"
     # use general plot parameters
     plt.rcParams.update(pyplot_params)
     color_map = prepare_color_map(cmap, color_nan)
@@ -1061,7 +1073,14 @@ def plot_line_mom0(
     )
     prodige_style(ax)
 
-    add_scalebar_and_beam(ax, hd_TdV, label_col=label_col_TdV)
+    add_scalebar_and_beam(
+        ax,
+        hd_TdV,
+        label_col=label_col_TdV,
+        bkgrd_col=bkgrd_col_TdV,
+        show_beam=True,
+        with_stroke=True,
+    )
     # save plot
     if save_fig:
         fig.savefig(
@@ -1088,6 +1107,8 @@ def plot_line_vlsr(
     do_annotation: bool = True,
     do_offsets: bool = False,
     save_fig: bool = True,
+    label_col_Vlsr: str = "black",
+    bkgrd_col_Vlsr: str = "white",
 ) -> None:
     """
     Function to plot the line centroid velocity data with the sources and outflow orientations.
@@ -1109,7 +1130,6 @@ def plot_line_vlsr(
     do_offsets: if True, the axes are displayed in offsets
     save_fig: if True, the figure is saved to disk
     """
-    label_col_Vlsr = "black"
     # use general plot parameters
     plt.rcParams.update(pyplot_params)
     color_map = prepare_color_map(cmap, color_nan)
@@ -1173,7 +1193,14 @@ def plot_line_vlsr(
     )
 
     add_side_colorbar(fig, ax, im, nbins=5, fmt="{x:.1f}")
-    add_scalebar_and_beam(ax, hd_TdV, label_col=label_col_Vlsr)
+    add_scalebar_and_beam(
+        ax,
+        hd_TdV,
+        label_col=label_col_Vlsr,
+        bkgrd_col=bkgrd_col_Vlsr,
+        show_beam=True,
+        with_stroke=True,
+    )
     # save plot
     if save_fig:
         fig.savefig(

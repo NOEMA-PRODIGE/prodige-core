@@ -1,22 +1,23 @@
 from __future__ import annotations
-import numpy as np
+
 from contextlib import nullcontext as does_not_raise
 
-from astropy import units as u
-from astropy.io import fits
-import prodige_core.source_catalogue
-from prodige_core.source_catalogue import region_dic
 import pytest
 
+import prodige_core.source_catalogue
+from prodige_core.source_catalogue import region_dic
 
-@pytest.mark.parametrize("source_id, expected_raise",
-                         [
-                             ("test", pytest.raises(ValueError)),
-                             ("B1-bS", does_not_raise()),],)
+
+@pytest.mark.parametrize(
+    "source_id, expected_raise",
+    [
+        ("test", pytest.raises(ValueError)),
+        ("B1-bS", does_not_raise()),
+    ],
+)
 def test_validate_source_id(source_id, expected_raise) -> None:
     with expected_raise:
-        prodige_core.source_catalogue.validate_source_id(
-            source_id) is not None
+        assert prodige_core.source_catalogue.validate_source_id(source_id) is not None
 
 
 def test_get_outflow_information() -> None:
@@ -24,8 +25,7 @@ def test_get_outflow_information() -> None:
         prodige_core.source_catalogue.get_outflow_information()
     )
     assert len(sources_outflowPA) == 76
-    assert (sources_outflowPA[0] == "IRS3A") and (
-        sources_outflowPA[-1] == "SVS13C")
+    assert (sources_outflowPA[0] == "IRS3A") and (sources_outflowPA[-1] == "SVS13C")
 
 
 def test_get_region_names() -> None:
@@ -50,8 +50,7 @@ def test_load_cutout(sample_image) -> None:
     hdu_new_3d = prodige_core.source_catalogue.load_cutout(
         hdu_3d, source="B1-bS", is_hdu=True
     )
-    assert (hdu_2d_new.header["NAXIS1"] == 200) and (
-        hdu_2d_new.header["NAXIS2"] == 200)
+    assert (hdu_2d_new.header["NAXIS1"] == 200) and (hdu_2d_new.header["NAXIS2"] == 200)
     assert (hdu_2d_new.header["CRVAL1"] == pytest.approx(ra0)) and (
         hdu_2d_new.header["CRVAL2"] == pytest.approx(dec0)
     )
@@ -70,13 +69,16 @@ def test_get_figsize() -> None:
     fig_size = prodige_core.source_catalogue.get_figsize("Per-emb-2")
     assert fig_size == (6.0, 6.0)
 
-@pytest.mark.parametrize("source_id, expected_raise",
-                         [
-                             ("test", pytest.raises(ValueError)),
-                             ("B1-bS", does_not_raise()),],)
+
+@pytest.mark.parametrize(
+    "source_id, expected_raise",
+    [
+        ("test", pytest.raises(ValueError)),
+        ("B1-bS", does_not_raise()),
+    ],
+)
 def test_get_region_vlsr(source_id, expected_raise) -> None:
     v_lsr = prodige_core.source_catalogue.get_region_vlsr("B1-bS")
     assert v_lsr == 6.75
     with expected_raise:
-        prodige_core.source_catalogue.get_region_vlsr(
-            source_id) is not None
+        assert prodige_core.source_catalogue.get_region_vlsr(source_id) is not None
