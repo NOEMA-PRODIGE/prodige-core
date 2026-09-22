@@ -1,7 +1,10 @@
 # definition of the default configuration for the prodige package
+from __future__ import annotations
+
+from typing import Any
 
 # this is the matplotlib.pyplot configuration dictionary
-pyplot_params = {
+pyplot_params: dict[str, Any] = {
     "text.usetex": True,
     "font.size": 12,
     "axes.labelsize": 12,
@@ -32,5 +35,5 @@ pyplot_params = {
 source_filename = "sources.csv"
 distance = 288.0  # pc
 cmap_default = "viridis"
-cmap_mom0_default = 'magma'
-cmap_vlsr_default = 'coolwarm'
+cmap_mom0_default = "magma"
+cmap_vlsr_default = "coolwarm"

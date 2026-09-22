@@ -400,8 +400,8 @@ def get_region_center(source: str) -> tuple[float, float]:
         region_dic[source]["RA0"] + " " + region_dic[source]["Dec0"],
         unit=(u.hourangle, u.deg),  # type: ignore
     )
-    ra0 = cast(float, position.ra.deg)  # type: ignore
-    dec0 = cast(float, position.dec.deg)  # type: ignore
+    ra0 = position.ra.deg * u.deg
+    dec0 = position.dec.deg * u.deg
     return ra0, dec0
 
 
