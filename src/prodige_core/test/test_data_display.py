@@ -1,20 +1,20 @@
 from __future__ import annotations
-import numpy as np
+
 import os
 
-import prodige_core.data_display
+import numpy as np
+import pytest
 from astropy import units as u
+from astropy.utils.exceptions import AstropyUserWarning
 from matplotlib.testing.decorators import image_comparison
 
-import pytest
+import prodige_core.data_display
 
 
 def test_pb_telecope_good_frequency() -> None:
     assert (
-        prodige_core.data_display.pb_telecope(
-            72.78382 * u.GHz, telescope="NOEMA"  # type: ignore
-        )  # type: ignore
-        == 64.1 * u.arcsec  # type: ignore
+        prodige_core.data_display.pb_telecope(72.78382 * u.GHz, telescope="NOEMA")  # type: ignore
+        == 64.1 * u.arcsec
     )
     assert (
         prodige_core.data_display.pb_telecope(345 * u.GHz, telescope="SMA")  # type: ignore
@@ -30,7 +30,8 @@ def test_pb_telecope_good_frequency() -> None:
     )
     with pytest.raises(ValueError):
         prodige_core.data_display.pb_telecope(
-            72.78382 * u.GHz, telescope="TEST"  # type: ignore
+            72.78382 * u.GHz,
+            telescope="TEST",  # type: ignore
         )
 
 
@@ -79,10 +80,16 @@ def test_noise_map() -> None:
     data_2d[-1, -1] = np.nan
     data_2d[0, 0] = np.nan
     data_2d[-1, 0] = np.nan
-    assert (
-        pytest.approx(prodige_core.data_display.determine_noise_map(data_2d), rel=0.05)
-        == rms
-    )
+    with pytest.warns(
+        AstropyUserWarning,
+        match="Input data contains invalid values (NaNs or infs)*",
+    ):
+        assert (
+            pytest.approx(
+                prodige_core.data_display.determine_noise_map(data_2d), rel=0.05
+            )
+            == rms
+        )
 
 
 def test_filename_continuum() -> None:

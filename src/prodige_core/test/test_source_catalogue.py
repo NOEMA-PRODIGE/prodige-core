@@ -1,10 +1,11 @@
 from __future__ import annotations
-import numpy as np
+
 from contextlib import nullcontext as does_not_raise
+
+import pytest
 
 import prodige_core.source_catalogue
 from prodige_core.source_catalogue import region_dic
-import pytest
 
 
 @pytest.mark.parametrize(
@@ -16,7 +17,7 @@ import pytest
 )
 def test_validate_source_id(source_id, expected_raise) -> None:
     with expected_raise:
-        prodige_core.source_catalogue.validate_source_id(source_id)
+        assert prodige_core.source_catalogue.validate_source_id(source_id) is not None
 
 
 def test_get_outflow_information() -> None:
@@ -89,4 +90,4 @@ def test_get_region_vlsr(source_id, expected_raise) -> None:
     v_lsr = prodige_core.source_catalogue.get_region_vlsr("B1-bS")
     assert v_lsr == 6.75
     with expected_raise:
-        prodige_core.source_catalogue.get_region_vlsr(source_id)
+        assert prodige_core.source_catalogue.get_region_vlsr(source_id) is not None

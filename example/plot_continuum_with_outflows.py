@@ -22,6 +22,8 @@ pcore.plot_continuum(
     color_nan="0.9",
     do_marker=True,
     do_outflow=True,
+    bkgrd_col="white",
+    label_col="black",
 )
 
 # name of the region
@@ -38,9 +40,12 @@ pcore.plot_continuum(
     color_nan="0.9",
     do_marker=True,
     do_outflow=True,
+    bkgrd_col="white",
+    label_col="black",
 )
 
-fig, axs = plot_continuum_grid(
+# fig, axs =
+plot_continuum_grid(
     panels=[("B5-IRS1", "lo"), ("HH211", "li"), ("B5-IRS1", "lo"), ("HH211", "li")],
     data_directory="./",
     fig_directory="./",
@@ -52,7 +57,7 @@ fig, axs = plot_continuum_grid(
     do_offsets=True,
     show_colorbar=False,
 )
-fig.savefig("continuum_grid.pdf", bbox_inches="tight", dpi=300)
+# fig.savefig("continuum_grid.pdf", bbox_inches="tight", dpi=300)
 
 # # name of the region
 region = "HH211"
