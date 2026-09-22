@@ -64,7 +64,7 @@ def get_contour_params(
     # determines the number of contours to be plotted
     steps = int(np.log(maximum / (5.0 * noise)) // np.log(2.0)) + 1
     if steps < 1:
-        return [0.0], ["solid"], False
+        return np.array([0.0], dtype=np.float64), ["solid"], False
     steps_arr = np.logspace(
         start=0,
         stop=steps,
@@ -258,8 +258,8 @@ def get_frequency(header: Header) -> float:
     """
     if "RESTFREQ" not in header:
         raise ValueError("RESTFREQ not found in header.")
-    else:
-        restfreq = header["RESTFREQ"]  # Hz
+
+    restfreq = float(header["RESTFREQ"])  # type: ignore[arg-type]
     return restfreq * 1e-9
 
 
@@ -272,9 +272,11 @@ def get_wavelength(header: Header) -> float:
     Returns:
     wavelength: wavelength in mm
     """
-    restfreq = get_frequency(header)
-    wavelength = (restfreq * u.GHz).to(u.mm, equivalencies=u.spectral())
-    return np.around(wavelength, decimals=1)  # mm
+    restfreq_ghz = get_frequency(header)
+    # Perform unit conversion
+    freq_quantity = u.Quantity(restfreq_ghz, u.GHz)
+    wavelength_quantity: u.Quantity = freq_quantity.to(u.mm, equivalencies=u.spectral())  # type: ignore[reportUnknownMemberType]
+    return round(float(wavelength_quantity.value), 1)  # type: ignore[reportUnknownMemberType]
 
 
 def prodige_style(
