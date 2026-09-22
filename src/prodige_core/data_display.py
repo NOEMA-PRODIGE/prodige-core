@@ -83,6 +83,61 @@ def get_contour_params(
     return steps_arr, line_styles, True
 
 
+def default_minmax(
+    data: NDArray[np.float64],
+    noise: float,
+    vmin: float | None,
+    vmax: float | None,
+    vmax_scale: float = 1.0,
+) -> tuple[float, float]:
+    """
+    Fill in vmin/vmax defaults shared by the continuum and moment-0 plots:
+    vmin defaults to -5*noise, vmax defaults to vmax_scale*max(data).
+    """
+    if vmin is None:
+        vmin = -5.0 * noise
+    if vmax is None:
+        vmax = vmax_scale * np.nanmax(data)
+    return vmin, vmax
+
+
+def plot_data_contours(
+    ax: Axes,
+    data: NDArray[np.float64],
+    wcs: WCS,
+    noise: float,
+    linewidth_white: float = 0.75,
+    linewidth_black: float = 0.35,
+) -> bool:
+    """
+    Draw the white+black sigma contour levels shared by all panel plots.
+    Returns whether any contour level was valid (and thus drawn).
+    """
+    cont_levels, style_levels, valid_contour = get_contour_params(
+        np.nanmax(data), noise
+    )
+    if valid_contour:
+        ax.contour(
+            data,
+            colors="white",
+            alpha=1.0,
+            levels=cont_levels,
+            linestyles=style_levels,
+            linewidths=linewidth_white,
+            transform=ax.get_transform(wcs),
+        )
+        ax.contour(
+            data,
+            colors="black",
+            alpha=1.0,
+            levels=cont_levels,
+            linestyles=style_levels,
+            linewidths=linewidth_black,
+            transform=ax.get_transform(wcs),
+        )
+    return valid_contour
+
+
 def filename_continuum(region: str, bb: str, mosaic: bool = False) -> str:
     """Function to return the filename of the continuum data.
     It follows the naming convention of PRODIGE.
@@ -467,8 +522,35 @@ def annotate_outflow(
         )
 
 
-@u.quantity_input
-def validate_frequency(frequency: u.Hz) -> bool:  # type: ignore
+def annotate_panel(
+    ax: Axes,
+    wcs: WCS,
+    do_marker: bool = False,
+    do_outflow: bool = False,
+    do_annotation: bool = True,
+) -> None:
+    """
+    Add source names/markers and outflow orientations to a panel, using the
+    styling shared by all panel plots.
+    """
+    ax.autoscale(enable=False)
+    if do_annotation:
+        annotate_sources(
+            ax,
+            wcs,
+            color="white",
+            color_back="black",
+            fontsize=10,
+            marker=do_marker,
+            label=True,
+            label_offset=4.0 * u.arcsec,
+            connect_line=True,
+        )
+    if do_outflow:
+        annotate_outflow(ax, wcs, arrow_width=2.0)
+
+
+def validate_frequency(frequency: u.Hz) -> bool:
     """
     Function to validate the frequency.
     Parameters:
@@ -533,8 +615,72 @@ def plot_PB(
     ax.add_patch(circ)
 
 
+def prepare_color_map(cmap: Colormap | str, color_nan: str = "0.1") -> Colormap:
+    """Build a colormap instance with NaN pixels colored, shared by all panel plots."""
+    color_map = plt.get_cmap(cmap).copy()
+    color_map.set_bad(color=color_nan)
+    return color_map
+
+
+def add_scalebar_and_beam(
+    ax: Axes,
+    header: Header,
+    label_col: str = "black",
+    show_beam: bool = True,
+    with_stroke: bool = False,
+) -> None:
+    """Add the standard 1000 au scale bar and synthesized beam to a panel."""
+    length = (1e3 * u.au / (distance * u.pc)).to(u.deg, u.dimensionless_angles())
+    add_scalebar(ax, length, label=r"1\,000 au", color=label_col, corner="bottom right")
+    if with_stroke:
+        scalebar = ax.artists[-1]  # get the last added artist, which is the scalebar
+        scalebar.txt_label._text.set_path_effects(
+            [PathEffects.withStroke(linewidth=1.0, foreground="white")]
+        )
+        scalebar.size_bar.get_children()[0].set_path_effects(
+            [PathEffects.withStroke(linewidth=2.0, foreground="white")]
+        )
+    if show_beam:
+        add_beam(
+            ax,
+            header=header,
+            frame=False,
+            pad=0.2,
+            color=label_col,
+            corner="bottom left",
+        )
+
+
+def add_side_colorbar(
+    fig: Figure,
+    ax: Axes,
+    im: AxesImage,
+    label: str | None = None,
+    label_fontsize: float | None = None,
+    nbins: int = 5,
+    fmt: str = "{x:.0f}",
+    pad: float = 0.005,
+    width: float = 0.025,
+) -> None:
+    """Add a colorbar to the right of ax, styled consistently across the panel plots."""
+    cax = fig.add_axes(
+        [
+            ax.get_position().x1 + pad,
+            ax.get_position().y0,
+            width,
+            ax.get_position().height,
+        ]
+    )
+    cb = fig.colorbar(im, cax=cax)
+    if label is not None:
+        cb.set_label(label, fontsize=label_fontsize)
+    cb.ax.yaxis.set_tick_params(color="black", labelcolor="black", direction="out")
+    cb.ax.locator_params(nbins=nbins)
+    cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter(fmt))
+
+
 def plot_continuum_panel(
-    data_cont: NArray[np.float64],
+    data_cont: NDArray[np.float64],
     header: Header,
     wcs: WCS,
     ax: Axes,
@@ -576,10 +722,7 @@ def plot_continuum_panel(
     Returns:
     im: the AxesImage returned by imshow, for use with fig.colorbar()
     """
-    if vmin is None:
-        vmin = -5.0 * noise_cont
-    if vmax is None:
-        vmax = 0.3 * np.nanmax(data_cont)
+    vmin, vmax = default_minmax(data_cont, noise_cont, vmin, vmax, vmax_scale=0.3)
 
     im = ax.imshow(
         data_cont,
@@ -597,69 +740,13 @@ def plot_continuum_panel(
         plot_PB(ax, header, ra0, dec0, color="white", lw=1.0)
         plot_PB(ax, header, ra0, dec0, color="black", lw=0.5)
 
-    # add continuum contour levels
-    cont_levels, style_levels, valid_contour = get_contour_params(
-        np.nanmax(data_cont), noise_cont
+    plot_data_contours(ax, data_cont, wcs, noise_cont)
+    annotate_panel(
+        ax, wcs, do_marker=do_marker, do_outflow=do_outflow, do_annotation=do_annotation
     )
-    if valid_contour:
-        ax.contour(
-            data_cont,
-            colors="white",
-            alpha=1.0,
-            levels=cont_levels,
-            linestyles=style_levels,
-            linewidths=0.75,
-            transform=ax.get_transform(wcs),
-        )
-        ax.contour(
-            data_cont,
-            colors="black",
-            alpha=1.0,
-            levels=cont_levels,
-            linestyles=style_levels,
-            linewidths=0.35,
-            transform=ax.get_transform(wcs),
-        )
-
-    # annotate source names
-    ax.autoscale(enable=False)
-    if do_annotation:
-        annotate_sources(
-            ax,
-            wcs,
-            color="white",
-            color_back="black",
-            fontsize=10,
-            marker=do_marker,
-            label=True,
-            label_offset=4.0 * u.arcsec,
-            connect_line=True,
-        )
-
-    # add outflow orientations
-    if do_outflow:
-        annotate_outflow(ax, wcs, arrow_width=2.0)
-
-    # add linear scale bar (1000 au)
-    length = (1e3 * u.au / (distance * u.pc)).to(u.deg, u.dimensionless_angles())
-    add_scalebar(ax, length, label=r"1\,000 au", color=label_col, corner="bottom right")
-    scalebar = ax.artists[-1]  # get the last added artist, which is the scalebar
-    scalebar.txt_label._text.set_path_effects(
-        [PathEffects.withStroke(linewidth=1.0, foreground="white")]
+    add_scalebar_and_beam(
+        ax, header, label_col=label_col, show_beam=show_beam, with_stroke=True
     )
-    scalebar.size_bar.get_children()[0].set_path_effects(
-        [PathEffects.withStroke(linewidth=2.0, foreground="white")]
-    )
-    # add beam
-    if show_beam:
-        add_beam(
-            ax,
-            header=header,
-            frame=False,
-            pad=0.2,
-            color=label_col,
-            corner="bottom left",
-        )
 
     if do_offsets:
         if ra0 is None or dec0 is None:
@@ -760,8 +847,7 @@ def plot_continuum_grid(
     fig, axs: the created figure and the list of axes (one per panel)
     """
     plt.rcParams.update(pyplot_params)
-    color_map = plt.get_cmap(cmap).copy()
-    color_map.set_bad(color=color_nan)
+    color_map = prepare_color_map(cmap, color_nan)
 
     n_panels = len(panels)
     nrows = int(np.ceil(n_panels / ncols))
@@ -814,24 +900,17 @@ def plot_continuum_grid(
 
         if show_colorbar:
             wavelength = get_wavelength(header)
-            cax = fig.add_axes(
-                [
-                    ax.get_position().x1 + 0.005,
-                    ax.get_position().y0,
-                    0.015,
-                    ax.get_position().height,
-                ]
+            add_side_colorbar(
+                fig,
+                ax,
+                im,
+                label=r"$I_{"
+                + str(wavelength.value)
+                + "\\, \\rm mm}$ (mJy\\,beam$^{-1}$)",
+                label_fontsize=8,
+                nbins=4,
+                width=0.015,
             )
-            cb = fig.colorbar(im, cax=cax)
-            cb.set_label(
-                r"$I_{" + str(wavelength.value) + "\\, \\rm mm}$ (mJy\\,beam$^{-1}$)",
-                fontsize=8,
-            )
-            cb.ax.yaxis.set_tick_params(
-                color="black", labelcolor="black", direction="out"
-            )
-            cb.ax.locator_params(nbins=4)
-            cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.0f}"))
 
     if save_fig:
         fig.savefig(
@@ -886,8 +965,7 @@ def plot_continuum(
     # plot continuum in color and contours, add source names, add outflow directions
     # use general plot parameters
     plt.rcParams.update(pyplot_params)
-    color_map = plt.get_cmap(cmap).copy()
-    color_map.set_bad(color=color_nan)
+    color_map = prepare_color_map(cmap, color_nan)
     # figure size from dictionary
     fig_width, fig_height = get_figsize(region)
     ra0, dec0 = get_region_center(region)
@@ -896,10 +974,7 @@ def plot_continuum(
     data_cont, noise_cont, hd_cont = load_continuum_data(
         data_directory + file_name, region
     )
-    if vmin == None:
-        vmin = -5.0 * noise_cont
-    if vmax == None:
-        vmax = 0.3 * np.nanmax(data_cont)
+    vmin, vmax = default_minmax(data_cont, noise_cont, vmin, vmax, vmax_scale=0.3)
 
     wavelength = get_wavelength(hd_cont)
     wcs_cont = WCS(hd_cont)
@@ -928,22 +1003,12 @@ def plot_continuum(
         do_offsets=do_offsets,
     )
     # Get coordinates for colorbar
-    cax = fig.add_axes(
-        (
-            ax.get_position().x1 + 0.005,
-            ax.get_position().y0,
-            0.025,
-            ax.get_position().height,
-        )
+    add_side_colorbar(
+        fig,
+        ax,
+        im,
+        label=r"$I_{" + str(wavelength.value) + "\\, \\rm mm}$ (mJy\\,beam$^{-1}$)",
     )
-    # add colorbar
-    cb = fig.colorbar(im, cax=cax)
-    cb.set_label(r"$I_{" + str(wavelength) + "\\, \\rm mm}$ (mJy\\,beam$^{-1}$)")
-    cb.ax.yaxis.set_tick_params(color="black", labelcolor="black", direction="out")
-    cb.ax.locator_params(nbins=5)
-
-    # cb.locator = MultipleLocator(10.0)
-    cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.0f}"))
     # save plot
     if save_fig:
         fig.savefig(
@@ -974,18 +1039,14 @@ def plot_line_mom0(
     label_col_TdV = "white"
     # use general plot parameters
     plt.rcParams.update(pyplot_params)
-    color_map = plt.get_cmap(cmap).copy()
-    color_map.set_bad(color=color_nan)
+    color_map = prepare_color_map(cmap, color_nan)
     # figure size from dictionary
     fig_width, fig_height = get_figsize(region)
     ra0, dec0 = get_region_center(region)
     # load integrated intensity data
     file_name = filename_line_TdV(region, linename, mosaic)
     data, noise_map, hd_TdV = load_line_TdV(data_directory + file_name, region)
-    if vmin == None:
-        vmin = -5.0 * noise_map
-    if vmax == None:
-        vmax = np.nanmax(data)
+    vmin, vmax = default_minmax(data, noise_map, vmin, vmax, vmax_scale=1.0)
 
     wcs_TdV = WCS(hd_TdV)
 
@@ -1004,83 +1065,17 @@ def plot_line_mom0(
     )
     if mosaic == False:
         plot_PB(ax, hd_TdV, ra0, dec0)
-    cont_levels, style_levels, valid_contour = get_contour_params(
-        np.nanmax(data), noise_map
+    plot_data_contours(ax, data, wcs_TdV, noise_map)
+    annotate_panel(
+        ax,
+        wcs_TdV,
+        do_marker=do_marker,
+        do_outflow=do_outflow,
+        do_annotation=do_annotation,
     )
-
-    if valid_contour:
-        ax.contour(
-            data,
-            colors="white",
-            alpha=1.0,
-            levels=cont_levels,
-            linestyles=style_levels,
-            linewidths=0.75,
-            transform=ax.get_transform(wcs_TdV),  # type: ignore[arg-type]
-        )
-
-        ax.contour(
-            data,
-            colors="black",
-            alpha=1.0,
-            levels=cont_levels,
-            linestyles=style_levels,
-            linewidths=0.35,
-            transform=ax.get_transform(wcs_TdV),  # type: ignore[arg-type]
-        )
-
-    # annotate source names
-    ax.autoscale(enable=False)
-    if do_annotation == True:
-        annotate_sources(
-            ax,
-            wcs_TdV,
-            color="white",
-            color_back="black",
-            fontsize=10,
-            marker=do_marker,
-            label=True,
-            label_offset=4.0 * u.arcsec,  # type: ignore
-            connect_line=True,
-        )
-
-    # add outflow orientations
-    if do_outflow:
-        annotate_outflow(ax, wcs_TdV, arrow_width=2.0)
     prodige_style(ax)
 
-    # Get coordinates for colorbar
-    # cax = fig.add_axes(
-    #     [
-    #         ax.get_position().x1 + 0.005,
-    #         ax.get_position().y0,
-    #         0.025,
-    #         ax.get_position().height,
-    #     ]
-    # )
-    # add colorbar
-    # cb = fig.colorbar(im, cax=cax)
-    # cb.set_label(r"$I_{" + str(wavelength.value) + "}$ mm (mJy\\,beam$^{-1}$)")
-    # cb.ax.yaxis.set_tick_params(
-    #     color="black", labelcolor="black", direction="out")
-    # cb.ax.locator_params(nbins=5)
-
-    # cb.locator = MultipleLocator(10.0)
-    # cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.0f}"))
-    # add linear scale bar (1000 au)
-    length = (1e3 * u.au / (distance * u.pc)).to(u.deg, u.dimensionless_angles())  # type: ignore
-    add_scalebar(
-        ax, length, label=r"1\,000 au", color=label_col_TdV, corner="bottom right"
-    )
-    # add beam
-    add_beam(
-        ax,
-        header=hd_TdV,
-        frame=False,
-        pad=0.2,
-        color=label_col_TdV,
-        corner="bottom left",
-    )
+    add_scalebar_and_beam(ax, hd_TdV, label_col=label_col_TdV)
     # save plot
     if save_fig:
         fig.savefig(
@@ -1131,8 +1126,7 @@ def plot_line_vlsr(
     label_col_Vlsr = "black"
     # use general plot parameters
     plt.rcParams.update(pyplot_params)
-    color_map = plt.get_cmap(cmap).copy()
-    color_map.set_bad(color=color_nan)
+    color_map = prepare_color_map(cmap, color_nan)
     # figure size from dictionary
     fig_width, fig_height = get_figsize(region)
     ra0, dec0 = get_region_center(region)
@@ -1174,49 +1168,16 @@ def plot_line_vlsr(
     )
     if mosaic == False:
         plot_PB(ax, hd_TdV, ra0, dec0, color=label_col_Vlsr)
-    cont_levels, style_levels, valid_contour = get_contour_params(
-        np.nanmax(data_TdV), noise_map
-    )
-
-    if valid_contour:
-        ax.contour(
-            data_TdV,
-            colors="white",
-            alpha=1.0,
-            levels=cont_levels,
-            linestyles=style_levels,
-            linewidths=0.75,
-            transform=ax.get_transform(wcs_TdV),  # type: ignore[arg-type]
-        )
-
-        ax.contour(
-            data_TdV,
-            colors="black",
-            alpha=1.0,
-            levels=cont_levels,
-            linestyles=style_levels,
-            linewidths=0.35,
-            transform=ax.get_transform(wcs_TdV),  # type: ignore[arg-type]
-        )
+    plot_data_contours(ax, data_TdV, wcs_TdV, noise_map)
 
     # annotate source names
-    ax.autoscale(enable=False)
-    if do_annotation == True:
-        annotate_sources(
-            ax,
-            wcs_TdV,
-            color="white",
-            color_back="black",
-            fontsize=10,
-            marker=do_marker,
-            label=True,
-            label_offset=4.0 * u.arcsec,  # type: ignore
-            connect_line=True,
-        )
-
-    # add outflow orientations
-    if do_outflow:
-        annotate_outflow(ax, wcs_TdV, arrow_width=2.0)
+    annotate_panel(
+        ax,
+        wcs_TdV,
+        do_marker=do_marker,
+        do_outflow=do_outflow,
+        do_annotation=do_annotation,
+    )
     # style
     prodige_style(
         ax,
@@ -1224,37 +1185,8 @@ def plot_line_vlsr(
         center_coord=SkyCoord(ra=ra0, dec=dec0, unit=(u.deg, u.deg)),  # type: ignore
     )
 
-    # Get coordinates for colorbar
-    cax = fig.add_axes(
-        (
-            ax.get_position().x1 + 0.005,
-            ax.get_position().y0,
-            0.025,
-            ax.get_position().height,
-        )
-    )
-    # add colorbar
-    cb = fig.colorbar(im, cax=cax)
-    # cb.set_label(r"$V_{LSR}$ (km \\,s$^{-1}$)")
-    cb.ax.yaxis.set_tick_params(color="black", labelcolor="black", direction="out")
-    cb.ax.locator_params(nbins=5)
-
-    # cb.locator = MultipleLocator(10.0)
-    cb.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.1f}"))
-    # add linear scale bar (1000 au)
-    length = (1e3 * u.au / (distance * u.pc)).to(u.deg, u.dimensionless_angles())  # type: ignore
-    add_scalebar(
-        ax, length, label=r"1\,000 au", color=label_col_Vlsr, corner="bottom right"
-    )
-    # add beam
-    add_beam(
-        ax,
-        header=hd_TdV,
-        frame=False,
-        pad=0.2,
-        color=label_col_Vlsr,
-        corner="bottom left",
-    )
+    add_side_colorbar(fig, ax, im, nbins=5, fmt="{x:.1f}")
+    add_scalebar_and_beam(ax, hd_TdV, label_col=label_col_Vlsr)
     # save plot
     if save_fig:
         fig.savefig(
