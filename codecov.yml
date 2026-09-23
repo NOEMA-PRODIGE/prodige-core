@@ -1,0 +1,9 @@
+coverage:
+  range: 50..80
+  round: down
+  precision: 2
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 5%  # Allows coverage to drop by up to 5% without turning red

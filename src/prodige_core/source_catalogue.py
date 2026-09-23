@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import cast
+from typing import TypedDict, cast
 
 import numpy as np
 from astropy import units as u
@@ -83,8 +83,6 @@ fig_width_def = 6.0
 fig_height_def = 6.0
 width_def = 40.0 * u.arcsec  # type: ignore
 height_def = 40.0 * u.arcsec  # type: ignore
-
-from typing import TypedDict
 
 
 class Region(TypedDict):

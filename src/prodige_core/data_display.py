@@ -299,7 +299,7 @@ def prodige_style(
     ax: axis object.
     """
     # plot properties
-    if do_offsets == False:
+    if not do_offsets:
         RA = ax.coords[0]
         DEC = ax.coords[1]
         RA.set_axislabel(r"$\alpha$ (J2000)", minpad=0.7)
@@ -317,6 +317,10 @@ def prodige_style(
     else:
         if center_coord is None:
             raise ValueError("Center coordinate is not defined.")
+        #
+        # Need to make Delta RA increase to the left!
+        # Remove \" from tickmarks
+        #
         # Using implementation from
         # https://community.openastronomy.org/t/maps-in-relative-coordinates-with-wcsaxes/186/4
         RA = ax.coords[0]
@@ -331,22 +335,28 @@ def prodige_style(
         off_frame = center_coord.skyoffset_frame()
         overlay_coord = ax.get_coords_overlay(off_frame)
         ra_offset = overlay_coord["lon"]
+        ra_offset.set_coord_type("longitude", 180 * u.deg)  # type: ignore
         dec_offset = overlay_coord["lat"]
-        ra_offset.set_axislabel("R.A. offset")
-        dec_offset.set_axislabel("Dec. offset")
+        #
+        ra_offset.set_format_unit(u.arcsec)  # type: ignore
+        dec_offset.set_format_unit(u.arcsec)  # type: ignore
+
+        ra_offset.set_axislabel(r"$\Delta$ R.A.")
+        dec_offset.set_axislabel(r"$\Delta$ Dec.")
         ra_offset.set_major_formatter("s")
         dec_offset.set_major_formatter("s")
         ra_offset.set_ticks_position("bt")
-        ra_offset.set_ticklabel_position("b")
         dec_offset.set_ticks_position("lr")
+        #
+        ra_offset.set_ticklabel_position("b")
         dec_offset.set_ticklabel_position("l")
         ra_offset.set_axislabel_position("b")
         dec_offset.set_axislabel_position("l")
-        ra_offset.coord_wrap = 180 * u.deg  # avoid wrapping # type: ignore
+        # ra_offset.coord_wrap = 180 * u.deg  # avoid wrapping # type: ignore
         ra_offset.display_minor_ticks(True)
         dec_offset.display_minor_ticks(True)
-        dec_offset.set_minor_frequency(5)
         ra_offset.set_minor_frequency(5)
+        dec_offset.set_minor_frequency(5)
         dec_offset.set_ticks(spacing=15 * u.arcsec, color="black")  # type: ignore
         ra_offset.set_ticks(spacing=15 * u.arcsec, color="black")  # type: ignore
         # remember the overlay coords, since they (not ax.coords) carry the visible labels
@@ -1048,6 +1058,7 @@ def plot_line_mom0(
     mosaic: bool = False,
     do_marker: bool = False,
     do_outflow: bool = False,
+    do_offsets: bool = False,
     do_annotation: bool = True,
     save_fig: bool = True,
     label_col_TdV: str = "white",
@@ -1089,7 +1100,18 @@ def plot_line_mom0(
         do_outflow=do_outflow,
         do_annotation=do_annotation,
     )
-    prodige_style(ax)
+    if do_offsets:
+        if ra0 is None or dec0 is None:
+            raise ValueError("ra0 and dec0 are required when do_offsets is True.")
+        center_coord = SkyCoord(ra=ra0, dec=dec0, unit=(u.deg, u.deg))
+    else:
+        center_coord = None
+    prodige_style(ax, do_offsets=do_offsets, center_coord=center_coord)
+    # prodige_style(
+    #     ax,
+    #     do_offsets=do_offsets,
+    #     center_coord=SkyCoord(ra=ra0, dec=dec0, unit=(u.deg, u.deg)),  # type: ignore
+    # )
 
     add_scalebar_and_beam(
         ax,
@@ -1203,11 +1225,13 @@ def plot_line_vlsr(
         do_annotation=do_annotation,
     )
     # style
-    prodige_style(
-        ax,
-        do_offsets=do_offsets,
-        center_coord=SkyCoord(ra=ra0, dec=dec0, unit=(u.deg, u.deg)),  # type: ignore
-    )
+    if do_offsets:
+        if ra0 is None or dec0 is None:
+            raise ValueError("ra0 and dec0 are required when do_offsets is True.")
+        center_coord = SkyCoord(ra=ra0, dec=dec0, unit=(u.deg, u.deg))
+    else:
+        center_coord = None
+    prodige_style(ax, do_offsets=do_offsets, center_coord=center_coord)
 
     add_side_colorbar(fig, ax, im, nbins=5, fmt="{x:.1f}")
     add_scalebar_and_beam(

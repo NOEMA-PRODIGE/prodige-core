@@ -6,23 +6,24 @@ import os
 from pathlib import Path
 
 import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-
-plt.ion()
 import numpy as np
 import pytest
 from astropy import units as u
-
-# from astropy.io import fits
 from astropy.io.fits import Header
 from astropy.utils.exceptions import AstropyUserWarning
 from matplotlib.testing.decorators import image_comparison
 
 import prodige_core.data_display
 
-from .conftest import SampleImageFactory  # Import the Protocol type
+from .conftest import (  # Import the Protocol type
+    SampleImageFactory,
+    SampleImageFactoryVel,
+)
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+plt.ion()
 
 
 def test_pb_telecope_good_frequency() -> None:
@@ -162,12 +163,12 @@ def test_load_continuum_data(tmp_path: Path, sample_image: SampleImageFactory) -
     assert rms * 1e3 == pytest.approx(rms_out, rel=0.05)
 
 
-def test_load_line_TdV(tmp_path: Path, sample_image: SampleImageFactory) -> None:
+def test_load_line_TdV(tmp_path: Path, sample_image_line: SampleImageFactory) -> None:
     dir = tmp_path / "sub"
     dir.mkdir()
     file_link = os.path.join(os.fspath(dir), "test_noise.fits")
 
-    hdu = sample_image(is_2d=True)
+    hdu = sample_image_line(is_vlsr=False)
     rms = 0.1
     data = np.random.normal(0, rms, hdu.data.shape)  # (501, 501))
     hdu.data = data
@@ -191,18 +192,21 @@ def test_load_line_TdV(tmp_path: Path, sample_image: SampleImageFactory) -> None
     assert rms == pytest.approx(rms_out, rel=0.05)
 
 
-@image_comparison(
-    baseline_images=["example_map"],
-    remove_text=True,
-    extensions=["png"],
-    style="mpl20",
-    tol=10,
-)
-def test_plot_continuum(tmp_path: Path, sample_image: SampleImageFactory) -> None:
+def _plot_continuum_helper(
+    tmp_path: Path,
+    sample_image: SampleImageFactory,
+    vmin: float | None,
+    vmax: float | None,
+    do_annotation: bool,
+    do_offsets: bool,
+):
+    """Helper function for continuum plotting tests."""
     dir = tmp_path
     dir.mkdir(exist_ok=True)
-    file_name = prodige_core.data_display.filename_continuum("B1-bS", "li", False)
-    file_link = os.path.join(os.fspath(dir), file_name)  # "test_image.fits")
+    file_name = prodige_core.data_display.filename_continuum(
+        "B1-bS", "li", mosaic=False
+    )
+    file_link = os.path.join(os.fspath(dir), file_name)
     hdu = sample_image(is_2d=True)
     hdu.header["RESTFREQ"] = 216.7230e9
     rms = 0.1
@@ -217,10 +221,100 @@ def test_plot_continuum(tmp_path: Path, sample_image: SampleImageFactory) -> Non
         "li",
         os.fspath(dir) + "/",
         mosaic=False,
-        vmin=-0.5,
-        vmax=2.0,
+        vmin=vmin,
+        vmax=vmax,
         save_fig=False,
         do_marker=True,
-        do_annotation=True,
+        do_annotation=do_annotation,
+        do_offsets=do_offsets,
         do_outflow=True,
     )
+
+
+@image_comparison(
+    baseline_images=["example_map"],
+    remove_text=True,
+    extensions=["png"],
+    style="mpl20",
+    tol=10,
+)
+def test_plot_continuum(tmp_path: Path, sample_image: SampleImageFactory) -> None:
+    _plot_continuum_helper(tmp_path, sample_image, -0.5, 2.0, True, False)
+
+
+@image_comparison(
+    baseline_images=["example_map_offset"],
+    remove_text=True,
+    extensions=["png"],
+    style="mpl20",
+    tol=10,
+)
+def test_plot_continuum_offset(
+    tmp_path: Path, sample_image: SampleImageFactory
+) -> None:
+    _plot_continuum_helper(tmp_path, sample_image, None, None, False, True)
+
+
+def _plot_line_mom0_helper(
+    tmp_path: Path,
+    sample_image: SampleImageFactoryVel,
+    vmin: float | None,
+    vmax: float | None,
+    do_annotation: bool,
+    do_offsets: bool,
+):
+    """Helper function for line moment 0 plotting tests."""
+    dir = tmp_path
+    dir.mkdir(exist_ok=True)
+    file_name = prodige_core.data_display.filename_line_TdV(
+        "B1-bS", "DCO+_3-2", mosaic=False
+    )
+    file_link = os.path.join(os.fspath(dir), file_name)
+    hdu = sample_image(is_2d=True)
+    hdu.header["RESTFREQ"] = 230.538e9
+    rms = 0.1
+    seed = 122807528840384100672342137672332424406
+    rng = np.random.default_rng(seed)
+    data = rng.standard_normal(hdu.data.shape) * rms
+    hdu.data = data
+    hdu.header["BUNIT"] = "mJy/beam km/s"
+    hdu.writeto(file_link, overwrite=True)
+
+    prodige_core.data_display.plot_line_mom0(
+        "B1-bS",
+        "DCO+_3-2",
+        "li",
+        os.fspath(dir) + "/",
+        mosaic=False,
+        vmin=vmin,
+        vmax=vmax,
+        save_fig=False,
+        do_marker=True,
+        do_annotation=do_annotation,
+        do_offsets=do_offsets,
+        do_outflow=True,
+    )
+
+
+@image_comparison(
+    baseline_images=["example_line_mom0"],
+    remove_text=True,
+    extensions=["png"],
+    style="mpl20",
+    tol=10,
+)
+def test_plot_line_mom0(tmp_path: Path, sample_image: SampleImageFactoryVel) -> None:
+    _plot_line_mom0_helper(tmp_path, sample_image, -0.5, 2.0, True, False)
+
+
+@image_comparison(
+    baseline_images=["example_line_mom0_offset"],
+    remove_text=True,
+    extensions=["png"],
+    style="mpl20",
+    tol=10,
+)
+def test_plot_line_mom0_offset(
+    tmp_path: Path, sample_image: SampleImageFactoryVel
+) -> None:
+    _plot_line_mom0_helper(tmp_path, sample_image, None, None, False, True)
