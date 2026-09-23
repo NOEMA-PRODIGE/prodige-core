@@ -197,8 +197,8 @@ def test_load_line_TdV(tmp_path: Path, sample_image_line: SampleImageFactory) ->
 def _plot_continuum_helper(
     tmp_path: Path,
     sample_image: SampleImageFactory,
-    vmin: float,
-    vmax: float,
+    vmin: float | None,
+    vmax: float | None,
     do_annotation: bool,
     do_offsets: bool,
 ):
