@@ -33,5 +33,5 @@ __all__ = [
 ]
 try:
     from ._version import __version__
-except ImportError:
-    __version__ = importlib.metadata.version("prodige-core")
+except ImportError:  # pragma: no cover
+    __version__ = importlib.metadata.version("prodige-core")  # pragma: no cover
