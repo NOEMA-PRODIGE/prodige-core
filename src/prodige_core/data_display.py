@@ -1058,6 +1058,7 @@ def plot_line_mom0(
     mosaic: bool = False,
     do_marker: bool = False,
     do_outflow: bool = False,
+    do_offsets: bool = False,
     do_annotation: bool = True,
     save_fig: bool = True,
     label_col_TdV: str = "white",
@@ -1099,7 +1100,18 @@ def plot_line_mom0(
         do_outflow=do_outflow,
         do_annotation=do_annotation,
     )
-    prodige_style(ax)
+    if do_offsets:
+        if ra0 is None or dec0 is None:
+            raise ValueError("ra0 and dec0 are required when do_offsets is True.")
+        center_coord = SkyCoord(ra=ra0, dec=dec0, unit=(u.deg, u.deg))
+    else:
+        center_coord = None
+    prodige_style(ax, do_offsets=do_offsets, center_coord=center_coord)
+    # prodige_style(
+    #     ax,
+    #     do_offsets=do_offsets,
+    #     center_coord=SkyCoord(ra=ra0, dec=dec0, unit=(u.deg, u.deg)),  # type: ignore
+    # )
 
     add_scalebar_and_beam(
         ax,
@@ -1213,11 +1225,13 @@ def plot_line_vlsr(
         do_annotation=do_annotation,
     )
     # style
-    prodige_style(
-        ax,
-        do_offsets=do_offsets,
-        center_coord=SkyCoord(ra=ra0, dec=dec0, unit=(u.deg, u.deg)),  # type: ignore
-    )
+    if do_offsets:
+        if ra0 is None or dec0 is None:
+            raise ValueError("ra0 and dec0 are required when do_offsets is True.")
+        center_coord = SkyCoord(ra=ra0, dec=dec0, unit=(u.deg, u.deg))
+    else:
+        center_coord = None
+    prodige_style(ax, do_offsets=do_offsets, center_coord=center_coord)
 
     add_side_colorbar(fig, ax, im, nbins=5, fmt="{x:.1f}")
     add_scalebar_and_beam(
