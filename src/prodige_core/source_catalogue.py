@@ -1,17 +1,27 @@
-import numpy as np
-from numpy.typing import NDArray
-from astropy.coordinates import SkyCoord
-from astropy.nddata.utils import Cutout2D
+from __future__ import annotations
 
-from astropy import units as u
-from astropy.io import fits
-from astropy.io.fits import PrimaryHDU
-from astropy.wcs import WCS
 from typing import cast
 
-from importlib.resources import files
+import numpy as np
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+from astropy.io import fits
+from astropy.io.fits import PrimaryHDU
+from astropy.nddata.utils import Cutout2D
+from astropy.wcs import WCS
+from numpy.typing import NDArray
+
+try:
+    # from importlib.resources import files
+    from importlib.resources import as_file, files
+except ImportError:
+    from importlib_resources import as_file, files
+
+from pathlib import Path
 
 from .config import source_filename
+
+data_file_path: Path
 
 
 def load_sources_table() -> tuple[
@@ -29,11 +39,17 @@ def load_sources_table() -> tuple[
     """
     # load table containing sources within FoV
     # sources within FOV
-    # need to skip the first line, which is the header
-    data_file = files("prodige_core").joinpath(source_filename)
-    sources_tab = np.loadtxt(
-        str(data_file), dtype=np.str_, delimiter=",", comments="#", skiprows=1
-    )
+    # data_file = str(files("prodige_core").joinpath(source_filename))
+    # Use as_file within a context manager to get a safe file path.
+
+    with as_file(files("prodige_core").joinpath(source_filename)) as data_file_path:
+        sources_tab = np.loadtxt(
+            str(data_file_path), dtype="U", delimiter=",", comments="#", skiprows=1
+        )
+
+    # sources_tab = np.loadtxt(
+    #     data_file, dtype="U", delimiter=",", comments="#", skiprows=1
+    # )
     # source name
     name_list = sources_tab[:, 0]
     # source RA
@@ -43,11 +59,11 @@ def load_sources_table() -> tuple[
     # source color
     color_list = sources_tab[:, 3]
     # source vlsr
-    vlsr_list = sources_tab[:, 4].astype(float)
+    vlsr_list = sources_tab[:, 4].astype(np.float64)
     # source outflow PA
-    outflowPA = sources_tab[:, 5].astype(float)
+    outflowPA = sources_tab[:, 5].astype(np.float64)
     # label offset PA
-    label_offsetPA = sources_tab[:, 6].astype(float)
+    label_offsetPA = sources_tab[:, 6].astype(np.float64)
 
     return (
         name_list,
@@ -68,7 +84,19 @@ fig_height_def = 6.0
 width_def = 40.0 * u.arcsec  # type: ignore
 height_def = 40.0 * u.arcsec  # type: ignore
 
-region_dic = {
+from typing import TypedDict
+
+
+class Region(TypedDict):
+    RA0: str
+    Dec0: str
+    height: float
+    width: float
+    fig_height: float
+    fig_width: float
+
+
+region_dic: dict[str, Region] = {
     # these are the name of the mosaicked regions
     "L1448N": {
         "RA0": "3:25:36.44",
@@ -374,8 +402,8 @@ def get_region_center(source: str) -> tuple[float, float]:
         region_dic[source]["RA0"] + " " + region_dic[source]["Dec0"],
         unit=(u.hourangle, u.deg),  # type: ignore
     )
-    ra0 = cast(float, position.ra.deg)  # type: ignore
-    dec0 = cast(float, position.dec.deg)  # type: ignore
+    ra0 = position.ra.deg * u.deg
+    dec0 = position.dec.deg * u.deg
     return ra0, dec0
 
 

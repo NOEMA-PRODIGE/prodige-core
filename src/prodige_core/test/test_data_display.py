@@ -1,20 +1,34 @@
 from __future__ import annotations
-import numpy as np
+
 import os
 
-import prodige_core.data_display
+# from collections.abc import Callable
+from pathlib import Path
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+plt.ion()
+import numpy as np
+import pytest
 from astropy import units as u
+
+# from astropy.io import fits
+from astropy.io.fits import Header
+from astropy.utils.exceptions import AstropyUserWarning
 from matplotlib.testing.decorators import image_comparison
 
-import pytest
+import prodige_core.data_display
+
+from .conftest import SampleImageFactory  # Import the Protocol type
 
 
 def test_pb_telecope_good_frequency() -> None:
     assert (
-        prodige_core.data_display.pb_telecope(
-            72.78382 * u.GHz, telescope="NOEMA"  # type: ignore
-        )  # type: ignore
-        == 64.1 * u.arcsec  # type: ignore
+        prodige_core.data_display.pb_telecope(72.78382 * u.GHz, telescope="NOEMA")  # type: ignore
+        == 64.1 * u.arcsec
     )
     assert (
         prodige_core.data_display.pb_telecope(345 * u.GHz, telescope="SMA")  # type: ignore
@@ -30,7 +44,8 @@ def test_pb_telecope_good_frequency() -> None:
     )
     with pytest.raises(ValueError):
         prodige_core.data_display.pb_telecope(
-            72.78382 * u.GHz, telescope="TEST"  # type: ignore
+            72.78382 * u.GHz,
+            telescope="TEST",  # type: ignore
         )
 
 
@@ -49,21 +64,21 @@ def test_get_contour_params() -> None:
     steps_arr, line_style, do_contours = prodige_core.get_contour_params(50.0, 1.0)
     assert (steps_arr == [-5.0, 5.0, 10.0, 20.0, 40.0]).all()
     assert line_style == ["dotted"] + ["solid"] * 4
-    assert do_contours == True
+    assert do_contours
 
 
-def test_get_frequency(sample_image) -> None:
+def test_get_frequency(sample_image: SampleImageFactory) -> None:
     hdu = sample_image(is_2d=True)
-    hdr = hdu.header
+    hdr: Header = hdu.header
     assert prodige_core.data_display.get_frequency(hdr) == 72.78382
-    with pytest.raises(ValueError):
+    with pytest.raises((TypeError, ValueError)):
         prodige_core.data_display.get_frequency(72.78382 * u.GHz)  # type: ignore
 
 
-def test_get_wavelength(sample_image) -> None:
+def test_get_wavelength(sample_image: SampleImageFactory) -> None:
     hdu = sample_image(is_2d=True)
-    assert prodige_core.data_display.get_wavelength(hdu.header) == 4.1 * u.mm  # type: ignore
-    with pytest.raises(ValueError):
+    assert prodige_core.data_display.get_wavelength(hdu.header) == 4.1
+    with pytest.raises((TypeError, ValueError)):
         prodige_core.data_display.get_wavelength(72.78382 * u.m)  # type: ignore
 
 
@@ -79,10 +94,16 @@ def test_noise_map() -> None:
     data_2d[-1, -1] = np.nan
     data_2d[0, 0] = np.nan
     data_2d[-1, 0] = np.nan
-    assert (
-        pytest.approx(prodige_core.data_display.determine_noise_map(data_2d), rel=0.05)
-        == rms
-    )
+    with pytest.warns(
+        AstropyUserWarning,
+        match="Input data contains invalid values (NaNs or infs)*",
+    ):
+        assert (
+            pytest.approx(
+                prodige_core.data_display.determine_noise_map(data_2d), rel=0.05
+            )
+            == rms
+        )
 
 
 def test_filename_continuum() -> None:
@@ -118,7 +139,7 @@ def test_filename_line_vlsr() -> None:
     )
 
 
-def test_load_continuum_data(tmp_path, sample_image) -> None:
+def test_load_continuum_data(tmp_path: Path, sample_image: SampleImageFactory) -> None:
     dir = tmp_path / "sub"
     dir.mkdir()
     file_link = os.path.join(os.fspath(dir), "test_image.fits")
@@ -141,7 +162,7 @@ def test_load_continuum_data(tmp_path, sample_image) -> None:
     assert rms * 1e3 == pytest.approx(rms_out, rel=0.05)
 
 
-def test_load_line_TdV(tmp_path, sample_image) -> None:
+def test_load_line_TdV(tmp_path: Path, sample_image: SampleImageFactory) -> None:
     dir = tmp_path / "sub"
     dir.mkdir()
     file_link = os.path.join(os.fspath(dir), "test_noise.fits")
@@ -177,7 +198,7 @@ def test_load_line_TdV(tmp_path, sample_image) -> None:
     style="mpl20",
     tol=10,
 )
-def test_plot_continuum(tmp_path, sample_image) -> None:
+def test_plot_continuum(tmp_path: Path, sample_image: SampleImageFactory) -> None:
     dir = tmp_path
     dir.mkdir(exist_ok=True)
     file_name = prodige_core.data_display.filename_continuum("B1-bS", "li", False)

@@ -1,5 +1,9 @@
 import os
+
 import prodige_core as pcore
+from prodige_core.data_display import plot_continuum_grid
+
+# from prodige_core.config import pyplot_params
 
 # NOEMA data directory
 data_directory = os.getcwd() + "/"
@@ -18,6 +22,8 @@ pcore.plot_continuum(
     color_nan="0.9",
     do_marker=True,
     do_outflow=True,
+    bkgrd_col="white",
+    label_col="black",
 )
 
 # name of the region
@@ -34,8 +40,24 @@ pcore.plot_continuum(
     color_nan="0.9",
     do_marker=True,
     do_outflow=True,
+    bkgrd_col="white",
+    label_col="black",
 )
 
+# fig, axs =
+plot_continuum_grid(
+    panels=[("B5-IRS1", "lo"), ("HH211", "li"), ("B5-IRS1", "lo"), ("HH211", "li")],
+    data_directory="./",
+    fig_directory="./",
+    color_nan="0.9",
+    cmap="inferno",
+    fig_name="continuum_grid.pdf",
+    ncols=2,
+    labels=["Band lo", "HH211 li", "Band lo", "HH211 li"],
+    do_offsets=True,
+    show_colorbar=False,
+)
+# fig.savefig("continuum_grid.pdf", bbox_inches="tight", dpi=300)
 
 # # name of the region
 region = "HH211"
