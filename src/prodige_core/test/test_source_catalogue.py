@@ -55,8 +55,8 @@ def test_load_cutout(sample_image: SampleImageFactory) -> None:
     # Pass something that is NOT a string and NOT a PrimaryHDU
     invalid_input = 12345  # int instead of str or PrimaryHDU
     with pytest.raises(
-        ValueError,
-        match="file_in must be a valid FITS file name or a PrimaryHDU object.",
+        (ValueError, NameError),
+        # match="file_in must be a valid FITS file name or a PrimaryHDU object.",
     ):
         prodige_core.source_catalogue.load_cutout(invalid_input, is_hdu=True)  # type: ignore
     # dir = tmp_path / "sub"

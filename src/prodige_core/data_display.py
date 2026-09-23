@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+from typing import cast
+
 import matplotlib
 import matplotlib.patheffects as PathEffects
 from matplotlib.colors import Colormap
 
-matplotlib.use("Agg", force=True)
 # try:
 #     _ = matplotlib.get_backend()
 # except Exception:
+matplotlib.use("Agg", force=True)
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy import units as u
@@ -351,7 +353,7 @@ def prodige_style(
         ax._offset_coords = (ra_offset, dec_offset)
 
 
-@u.quantity_input
+# @u.quantity_input
 def annotate_sources(
     ax: Axes,
     wcs: WCS,
@@ -386,9 +388,9 @@ def annotate_sources(
     ):
         c = SkyCoord(ra=RA_i, dec=Dec_i, unit=(u.hourangle, u.deg))  # type: ignore
         # Check if source is within the field of view
-        if wcs.footprint_contains(c) == False:
+        if not wcs.footprint_contains(c):  # type: ignore[reportUnknownMemberType]
             continue
-        if marker == True:
+        if marker:
             ax.scatter(
                 c.ra,  # type: ignore
                 c.dec,  # type: ignore
@@ -401,7 +403,7 @@ def annotate_sources(
                 zorder=40,
             )
 
-        if label == True:
+        if label:
             c_label = c.directional_offset_by(offset_PA_i * u.deg, label_offset)  # type: ignore
             label_text = ax.text(
                 c_label.ra.degree,  # type: ignore
@@ -417,7 +419,7 @@ def annotate_sources(
                 [PathEffects.withStroke(linewidth=1.0, foreground=color_back)]
             )
 
-        if connect_line == True:
+        if connect_line:
             c_line_start = c.directional_offset_by(
                 offset_PA_i * u.deg,
                 0.2 * label_offset,  # type: ignore
@@ -446,7 +448,8 @@ def annotate_sources(
             )
 
 
-@u.quantity_input
+# @u.quantity_input
+# @u.quantity_input(arrow_length="angle", arrow_offset="angle")
 def annotate_outflow(
     ax: Axes,
     wcs: WCS,
@@ -478,7 +481,7 @@ def annotate_outflow(
         #  sources_Dec[k], unit=(u.hourangle, u.deg))
         # check if source is within the field of view
         # and if the outflow orientation is defined
-        if (wcs.footprint_contains(c) & np.isfinite(source_outflowPA_i)) == False:
+        if not (wcs.footprint_contains(c) & np.isfinite(source_outflowPA_i)):
             continue
         c_blue_start = c.directional_offset_by(source_outflowPA_i * u.deg, arrow_offset)  # type: ignore
         c_blue_end = c.directional_offset_by(source_outflowPA_i * u.deg, arrow_length)  # type: ignore
@@ -547,7 +550,7 @@ def annotate_panel(
             fontsize=10,
             marker=do_marker,
             label=True,
-            label_offset=4.0 * u.arcsec,
+            label_offset=4.0 * u.arcsec,  # type: ignore
             connect_line=True,
         )
     if do_outflow:
@@ -620,9 +623,8 @@ def plot_PB(
 
 def prepare_color_map(cmap: Colormap | str, color_nan: str = "0.1") -> Colormap:
     """Build a colormap instance with NaN pixels colored, shared by all panel plots."""
-    color_map = plt.get_cmap(cmap).copy()
-    color_map.with_extremes(bad=color_nan)
-    return color_map
+    base_cmap = plt.get_cmap(cmap) if isinstance(cmap, str) else cmap
+    return base_cmap.with_extremes(bad=color_nan)
 
 
 def add_scalebar_and_beam(
