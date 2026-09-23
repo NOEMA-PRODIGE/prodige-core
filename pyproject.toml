@@ -52,7 +52,7 @@ namespaces = false
 [tool.coverage.run]
 branch = true
 source = ["prodige_core"]
-omit = ["src/prodige_core/test/*"]
+omit = ["*/prodige_core/test/*"]
 
 
 [tool.pytest.ini_options]
