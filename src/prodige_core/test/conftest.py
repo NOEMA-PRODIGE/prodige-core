@@ -15,6 +15,10 @@ class SampleImageFactory(Protocol):
     def __call__(self, is_2d: bool = True) -> fits.PrimaryHDU: ...
 
 
+class SampleImageFactoryVel(Protocol):
+    def __call__(self, is_vlsr: bool = True) -> fits.PrimaryHDU: ...
+
+
 @pytest.fixture
 def sample_image() -> SampleImageFactory:
     def make_sample_image(is_2d: bool = True) -> fits.PrimaryHDU:
@@ -48,7 +52,7 @@ def sample_image() -> SampleImageFactory:
 
 
 @pytest.fixture
-def sample_image_line() -> SampleImageFactory:
+def sample_image_line() -> SampleImageFactoryVel:
     def make_sample_image_line(is_vlsr: bool = True) -> fits.PrimaryHDU:
         data = np.ones((501, 501))
         if is_vlsr:

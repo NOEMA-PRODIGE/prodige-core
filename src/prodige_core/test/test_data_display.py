@@ -22,7 +22,10 @@ from matplotlib.testing.decorators import image_comparison
 
 import prodige_core.data_display
 
-from .conftest import SampleImageFactory  # Import the Protocol type
+from .conftest import (  # Import the Protocol type
+    SampleImageFactory,
+    SampleImageFactoryVel,
+)
 
 
 def test_pb_telecope_good_frequency() -> None:
@@ -192,7 +195,12 @@ def test_load_line_TdV(tmp_path: Path, sample_image_line: SampleImageFactory) ->
 
 
 def _plot_continuum_helper(
-    tmp_path, sample_image, vmin, vmax, do_annotation, do_offsets
+    tmp_path: Path,
+    sample_image: SampleImageFactory,
+    vmin: float,
+    vmax: float,
+    do_annotation: bool,
+    do_offsets: bool,
 ):
     """Helper function for continuum plotting tests."""
     dir = tmp_path
@@ -251,9 +259,9 @@ def test_plot_continuum_offset(
 
 def _plot_line_mom0_helper(
     tmp_path: Path,
-    sample_image: SampleImageFactory,
-    vmin: float,
-    vmax: float,
+    sample_image: SampleImageFactoryVel,
+    vmin: float | None,
+    vmax: float | None,
     do_annotation: bool,
     do_offsets: bool,
 ):
@@ -297,7 +305,7 @@ def _plot_line_mom0_helper(
     style="mpl20",
     tol=10,
 )
-def test_plot_line_mom0(tmp_path: Path, sample_image: SampleImageFactory) -> None:
+def test_plot_line_mom0(tmp_path: Path, sample_image: SampleImageFactoryVel) -> None:
     _plot_line_mom0_helper(tmp_path, sample_image, -0.5, 2.0, True, False)
 
 
@@ -309,6 +317,6 @@ def test_plot_line_mom0(tmp_path: Path, sample_image: SampleImageFactory) -> Non
     tol=10,
 )
 def test_plot_line_mom0_offset(
-    tmp_path: Path, sample_image: SampleImageFactory
+    tmp_path: Path, sample_image: SampleImageFactoryVel
 ) -> None:
     _plot_line_mom0_helper(tmp_path, sample_image, None, None, False, True)
