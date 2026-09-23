@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from importlib.resources import as_file, files
+from pathlib import Path
 from typing import TypedDict, cast
 
 import numpy as np
@@ -10,14 +12,6 @@ from astropy.io.fits import PrimaryHDU
 from astropy.nddata.utils import Cutout2D
 from astropy.wcs import WCS
 from numpy.typing import NDArray
-
-try:
-    # from importlib.resources import files
-    from importlib.resources import as_file, files
-except ImportError:
-    from importlib_resources import as_file, files
-
-from pathlib import Path
 
 from .config import source_filename
 
