@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import os
-
-# from collections.abc import Callable
 from pathlib import Path
 
 import matplotlib
@@ -257,7 +255,7 @@ def test_plot_continuum_offset(
 
 def _plot_line_mom0_helper(
     tmp_path: Path,
-    sample_image: SampleImageFactoryVel,
+    sample_image_line: SampleImageFactoryVel,
     vmin: float | None,
     vmax: float | None,
     do_annotation: bool,
@@ -270,12 +268,12 @@ def _plot_line_mom0_helper(
         "B1-bS", "DCO+_3-2", mosaic=False
     )
     file_link = os.path.join(os.fspath(dir), file_name)
-    hdu = sample_image(is_2d=True)
+    hdu = sample_image_line(is_vlsr=False)
     hdu.header["RESTFREQ"] = 230.538e9
     rms = 0.1
     seed = 122807528840384100672342137672332424406
     rng = np.random.default_rng(seed)
-    data = rng.standard_normal(hdu.data.shape) * rms
+    data = hdu.data + rng.standard_normal(hdu.data.shape) * rms
     hdu.data = data
     hdu.header["BUNIT"] = "mJy/beam km/s"
     hdu.writeto(file_link, overwrite=True)
@@ -303,8 +301,10 @@ def _plot_line_mom0_helper(
     style="mpl20",
     tol=10,
 )
-def test_plot_line_mom0(tmp_path: Path, sample_image: SampleImageFactoryVel) -> None:
-    _plot_line_mom0_helper(tmp_path, sample_image, -0.5, 2.0, True, False)
+def test_plot_line_mom0(
+    tmp_path: Path, sample_image_line: SampleImageFactoryVel
+) -> None:
+    _plot_line_mom0_helper(tmp_path, sample_image_line, -0.3, 1.3, True, False)
 
 
 @image_comparison(
@@ -315,6 +315,79 @@ def test_plot_line_mom0(tmp_path: Path, sample_image: SampleImageFactoryVel) -> 
     tol=10,
 )
 def test_plot_line_mom0_offset(
-    tmp_path: Path, sample_image: SampleImageFactoryVel
+    tmp_path: Path, sample_image_line: SampleImageFactoryVel
 ) -> None:
-    _plot_line_mom0_helper(tmp_path, sample_image, None, None, False, True)
+    _plot_line_mom0_helper(tmp_path, sample_image_line, None, None, False, True)
+
+
+def _plot_line_vlsr_helper(
+    tmp_path: Path,
+    sample_image_line: SampleImageFactoryVel,
+    vmin: float | None,
+    vmax: float | None,
+    do_annotation: bool,
+    do_offsets: bool,
+):
+    """Helper function for line moment 0 plotting tests."""
+    dir = tmp_path
+    dir.mkdir(exist_ok=True)
+    file_name_vlsr = prodige_core.data_display.filename_line_vlsr(
+        "B1-bS", "DCO+_3-2", mosaic=False
+    )
+    file_link_vlsr = os.path.join(os.fspath(dir), file_name_vlsr)
+    hdu = sample_image_line(is_vlsr=True)
+    print(r"max and min of vlsr data", np.nanmax(hdu.data), np.nanmin(hdu.data))
+    hdu.writeto(file_link_vlsr, overwrite=True)
+
+    file_name_TdV = prodige_core.data_display.filename_line_TdV(
+        "B1-bS", "DCO+_3-2", mosaic=False
+    )
+    file_link_TdV = os.path.join(os.fspath(dir), file_name_TdV)
+    hdu = sample_image_line(is_vlsr=False)
+    rms = 0.1
+    seed = 122807528840384100672342137672332424406
+    rng = np.random.default_rng(seed)
+    data = hdu.data + rng.standard_normal(hdu.data.shape) * rms
+    hdu.data = data
+    hdu.writeto(file_link_TdV, overwrite=True)
+
+    prodige_core.data_display.plot_line_vlsr(
+        "B1-bS",
+        "DCO+_3-2",
+        os.fspath(dir) + "/",
+        color_nan="0.9",
+        mosaic=False,
+        vmin=vmin,
+        vmax=vmax,
+        save_fig=False,
+        do_marker=True,
+        do_annotation=do_annotation,
+        do_offsets=do_offsets,
+        do_outflow=True,
+    )
+
+
+@image_comparison(
+    baseline_images=["example_line_velocity"],
+    remove_text=True,
+    extensions=["png"],
+    style="mpl20",
+    tol=10,
+)
+def test_plot_line_vlsr(
+    tmp_path: Path, sample_image_line: SampleImageFactoryVel
+) -> None:
+    _plot_line_vlsr_helper(tmp_path, sample_image_line, 5.75, 7.75, True, False)
+
+
+@image_comparison(
+    baseline_images=["example_line_velocity_offset"],
+    remove_text=True,
+    extensions=["png"],
+    style="mpl20",
+    tol=10,
+)
+def test_plot_line_vlsr_offset(
+    tmp_path: Path, sample_image_line: SampleImageFactoryVel
+) -> None:
+    _plot_line_vlsr_helper(tmp_path, sample_image_line, None, None, False, True)
