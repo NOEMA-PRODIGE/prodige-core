@@ -1079,7 +1079,7 @@ def plot_line_mom0(
         vmin=vmin,
         vmax=vmax,
     )
-    if mosaic == False:
+    if not mosaic:
         plot_PB(ax, hd_TdV, ra0, dec0)
     plot_data_contours(ax, data, wcs_TdV, noise_map)
     annotate_panel(
@@ -1190,7 +1190,7 @@ def plot_line_vlsr(
         vmin=vmin,
         vmax=vmax,
     )
-    if mosaic == False:
+    if not mosaic:
         plot_PB(ax, hd_TdV, ra0, dec0, color=label_col_Vlsr)
     plot_data_contours(ax, data_TdV, wcs_TdV, noise_map)
 

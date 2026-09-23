@@ -199,7 +199,6 @@ def test_load_line_TdV(tmp_path: Path, sample_image: SampleImageFactory) -> None
     tol=10,
 )
 def test_plot_continuum(tmp_path: Path, sample_image: SampleImageFactory) -> None:
-
     dir = tmp_path
     dir.mkdir(exist_ok=True)
     file_name = prodige_core.data_display.filename_continuum("B1-bS", "li", False)
