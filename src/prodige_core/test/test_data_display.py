@@ -6,16 +6,9 @@ import os
 from pathlib import Path
 
 import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-
-plt.ion()
 import numpy as np
 import pytest
 from astropy import units as u
-
-# from astropy.io import fits
 from astropy.io.fits import Header
 from astropy.utils.exceptions import AstropyUserWarning
 from matplotlib.testing.decorators import image_comparison
@@ -26,6 +19,11 @@ from .conftest import (  # Import the Protocol type
     SampleImageFactory,
     SampleImageFactoryVel,
 )
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+plt.ion()
 
 
 def test_pb_telecope_good_frequency() -> None:

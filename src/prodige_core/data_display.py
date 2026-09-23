@@ -299,7 +299,7 @@ def prodige_style(
     ax: axis object.
     """
     # plot properties
-    if do_offsets == False:
+    if not do_offsets:
         RA = ax.coords[0]
         DEC = ax.coords[1]
         RA.set_axislabel(r"$\alpha$ (J2000)", minpad=0.7)
