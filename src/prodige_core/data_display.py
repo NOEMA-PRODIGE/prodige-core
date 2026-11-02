@@ -601,7 +601,7 @@ def pb_telecope(frequency: u.Quantity[u.Hz], telescope: str = "NOEMA") -> u.Quan
     elif telescope == "VLA":
         pb = (45.0 * u.arcmin * 1 * u.GHz / frequency).decompose()  # type: ignore
     elif telescope == "30m":
-        pb = (2460 * u.arcsec * 1 * u.Ghz / frequency).decompose()  # type: ignore
+        pb = (2460 * u.arcsec * 1 * u.GHz / frequency).decompose()  # type: ignore
     else:
         raise ValueError(
             "Telescope not supported. Please choose NOEMA, ALMA, SMA, VLA, or 30m."
