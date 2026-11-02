@@ -54,8 +54,12 @@ def determine_noise_map(data_2d: NDArray[np.float64]) -> float:
         data_2d.dtype, np.number
     ):
         raise ValueError("Input data must be a numeric numpy array.")
+    if not np.isfinite(data_2d).any():
+        raise ValueError("Input data must contain at least one finite value.")
     # compute noise in continuum data
     _, _, noise_2dmap = sigma_clipped_stats(data_2d, sigma=3.0)
+    if not np.isfinite(noise_2dmap) or noise_2dmap <= 0.0:
+        raise ValueError("Unable to determine a positive, finite noise estimate.")
     return noise_2dmap
 
 
@@ -67,6 +71,12 @@ def get_contour_params(
     maximum: maximum value to be shown in the plot
     noise: noise in the data
     """
+    if not np.isfinite(maximum):
+        raise ValueError("maximum must be finite.")
+    if not np.isfinite(noise) or noise <= 0.0:
+        raise ValueError("noise must be positive and finite.")
+    if maximum <= 0.0:
+        return np.array([0.0], dtype=np.float64), ["solid"], False
     # compute contour levels at -5,5,10,20,40,80x... sigma
     # determines the number of contours to be plotted
     steps = int(np.log(maximum / (5.0 * noise)) // np.log(2.0)) + 1
@@ -869,6 +879,13 @@ def plot_continuum_grid(
     Returns:
     fig, axs: the created figure and the list of axes (one per panel)
     """
+    if not panels:
+        raise ValueError("panels must contain at least one (region, bb) pair.")
+    if isinstance(ncols, bool) or not isinstance(ncols, int) or ncols <= 0:
+        raise ValueError("ncols must be a positive integer.")
+    if labels is not None and len(labels) != len(panels):
+        raise ValueError("labels must contain exactly one item per panel.")
+
     plt.rcParams.update(pyplot_params)
     color_map = prepare_color_map(cmap, color_nan)
 

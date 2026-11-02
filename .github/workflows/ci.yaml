@@ -35,6 +35,7 @@ jobs:
 
       - name: Install Font LaTeX
         run: |
+          tlmgr update --self
           tlmgr install type1cm cm-super underscore dvipng
 
       - name: Run tests with pytest

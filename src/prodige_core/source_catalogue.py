@@ -312,6 +312,11 @@ def load_cutout(
 
     Return:
     It returns the HDU of the cutout defined by the global variables: position and cutout_size.
+
+    Supported data are 2-D celestial images and 3-D cubes with exactly one plane
+    on FITS axis 3 (and celestial axes 1 and 2). Cubes with multiple planes and
+    other axis orderings are rejected because this function has no plane-selection
+    argument and always returns a 2-D cutout.
     """
     validate_source_id(source)
     position = SkyCoord(
@@ -323,25 +328,44 @@ def load_cutout(
     )
     hdu: PrimaryHDU
     if not is_hdu:
-        hdulist = fits.open(file_in)
-        if not isinstance(hdulist[0], PrimaryHDU):
-            raise TypeError("Expected PrimaryHDU in hdulist[0]")
-        hdu = cast(PrimaryHDU, hdulist[0])
+        with fits.open(file_in) as hdulist:
+            if not isinstance(hdulist[0], PrimaryHDU):
+                raise TypeError("Expected PrimaryHDU in hdulist[0]")
+            # Copy while the file is open so the returned HDU does not retain a
+            # handle (or a memmap) to the input file.
+            hdu = cast(PrimaryHDU, hdulist[0]).copy()
     elif isinstance(file_in, PrimaryHDU):
         hdu = file_in.copy()
     else:
         raise ValueError(
             "file_in must be a valid FITS file name or a PrimaryHDU object."
         )
-    # Make the cutout, including the WCS
+    # Make the cutout, including the WCS. Cutout2D accepts 2-D data only, so
+    # reduce only the explicitly supported singleton-cube representation.
     hd_original = hdu.header.copy()
     data_original = cast(NDArray, hdu.data)
-    if hd_original["NAXIS"] != 2:
-        wcs_original = WCS(hd_original).dropaxis(2)
-    else:
+    if data_original.ndim == 2:
         wcs_original = WCS(hd_original)
+        data_2d = data_original
+    elif data_original.ndim == 3:
+        wcs_3d = WCS(hd_original)
+        if data_original.shape[0] != 1:
+            raise ValueError(
+                "3-D FITS cubes must contain exactly one plane on FITS axis 3."
+            )
+        if wcs_3d.wcs.lng not in (0, 1) or wcs_3d.wcs.lat not in (0, 1):
+            raise ValueError(
+                "3-D FITS cubes must use celestial FITS axes 1 and 2; "
+                "nonstandard axis ordering is unsupported."
+            )
+        wcs_original = wcs_3d.dropaxis(2)
+        data_2d = data_original[0]
+    else:
+        raise ValueError(
+            "load_cutout supports only 2-D images and singleton 3-D FITS cubes."
+        )
     cutout = Cutout2D(
-        np.squeeze(data_original), position=position, size=cutout_size, wcs=wcs_original
+        data_2d, position=position, size=cutout_size, wcs=wcs_original
     )
     # update HDU with new data and updated header information
     hdu.data = cutout.data
@@ -359,6 +383,7 @@ def load_cutout(
         "CROTA3",
         "SPECSYS",
         "VELREF",
+        "WCSAXES",
     ]
     for key in key_list:
         if key in hdu.header:

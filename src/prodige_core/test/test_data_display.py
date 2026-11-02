@@ -41,11 +41,17 @@ def test_pb_telecope_good_frequency() -> None:
         prodige_core.data_display.pb_telecope(300 * u.GHz, telescope="ALMA")  # type: ignore
         == 19.0 * u.arcsec  # type: ignore
     )
+    assert (
+        prodige_core.data_display.pb_telecope(1 * u.GHz, telescope="30m")  # type: ignore
+        == 2460.0 * u.arcsec  # type: ignore
+    )
     with pytest.raises(ValueError):
         prodige_core.data_display.pb_telecope(
             72.78382 * u.GHz,
             telescope="TEST",  # type: ignore
         )
+    with pytest.raises(u.UnitsError):
+        prodige_core.data_display.pb_telecope(1 * u.m, telescope="30m")  # type: ignore
 
 
 def test_validate_frequency() -> None:
@@ -64,6 +70,22 @@ def test_get_contour_params() -> None:
     assert (steps_arr == [-5.0, 5.0, 10.0, 20.0, 40.0]).all()
     assert line_style == ["dotted"] + ["solid"] * 4
     assert do_contours
+
+
+@pytest.mark.parametrize(
+    ("maximum", "noise"),
+    [(np.nan, 1.0), (1.0, 0.0), (1.0, np.nan), (1.0, np.inf)],
+)
+def test_get_contour_params_invalid_inputs(maximum: float, noise: float) -> None:
+    with pytest.raises(ValueError):
+        prodige_core.data_display.get_contour_params(maximum, noise)
+
+
+def test_get_contour_params_zero_maximum() -> None:
+    levels, styles, do_contours = prodige_core.data_display.get_contour_params(0.0, 1.0)
+    assert (levels == [0.0]).all()
+    assert styles == ["solid"]
+    assert not do_contours
 
 
 def test_get_frequency(sample_image: SampleImageFactory) -> None:
@@ -102,6 +124,34 @@ def test_noise_map() -> None:
                 prodige_core.data_display.determine_noise_map(data_2d), rel=0.05
             )
             == rms
+        )
+
+
+@pytest.mark.parametrize(
+    "data", [np.zeros((4, 4)), np.full((4, 4), np.nan)]
+)
+def test_determine_noise_map_degenerate_data(data: np.ndarray) -> None:
+    with pytest.raises(ValueError):
+        prodige_core.data_display.determine_noise_map(data)
+
+
+@pytest.mark.parametrize(
+    ("panels", "ncols", "labels", "message"),
+    [
+        ([], 1, None, "panels must contain"),
+        ([('B1-bS', 'lo')], 0, None, "ncols must be"),
+        ([('B1-bS', 'lo')], 1, [], "labels must contain"),
+    ],
+)
+def test_plot_continuum_grid_validates_inputs(
+    panels: list[tuple[str, str]],
+    ncols: int,
+    labels: list[str] | None,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        prodige_core.data_display.plot_continuum_grid(
+            panels, data_directory="", ncols=ncols, labels=labels, save_fig=False
         )
 
 
