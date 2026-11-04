@@ -305,21 +305,24 @@ def load_cutout(
     Convenience function to load a FITS file, or an existing HDU,
     and to generate a cutout following the requested center and sizes.
 
-    params:
+    Parameters
+    ----------
 
-    file_in : FITS file name to be loaded (if is_hdu=False). If is_hdu=True,
-              the file_in represents a valid HDU to be used.
-    source : String parameter. It represents the source name to be used to
-             define the center of the cutout. This will be loaded from the
-             region dictionary.
-    is_hdu : Boolean parameter. It controls what is passed to the function.
-    center : Optional sky coordinate for the cutout center. When omitted, the
-             catalogue center for ``source`` is used.
-    size : Optional angular size for the cutout. When omitted, the catalogue
-           height and width for ``source`` are used.
+    file_in : str or PrimaryHDU
+        FITS file name to be loaded (if ``is_hdu=False``), or an HDU to use.
+    source : str
+        Source name used to define the cutout center from the region catalogue.
+    is_hdu : bool
+        Whether ``file_in`` is already an HDU.
+    center : SkyCoord, optional
+        Cutout center. When omitted, the catalogue center for ``source`` is used.
+    size : Quantity, optional
+        Cutout size. When omitted, the catalogue height and width are used.
 
-    Return:
-    It returns the HDU of the cutout defined by the global variables: position and cutout_size.
+    Returns
+    -------
+    PrimaryHDU
+        The HDU of the cutout defined by the requested position and size.
 
     Supported data are 2-D celestial images and 3-D cubes with exactly one plane
     on FITS axis 3 (and celestial axes 1 and 2). Cubes with multiple planes and

@@ -1331,24 +1331,19 @@ def plot_continuum(
     """
     Function to plot the continuum data with the sources and outflow orientations.
     Labels and annotations are added to the plot.
-    Parameters:
-    region: name of the region
-    bb: baseband of the data (lo, li, ui, uo)
-    data_directory: directory where the data is stored
-    fig_directory: directory where the figure will be stored
-    cmap: colormap for the plot (default is the one listed in config.py)
-    color_nan: color for NaN values
-    vmin: minimum value for the color scale. If None, it is set to -5*noise
-    vmax: maximum value for the color scale. If None, it is set to 0.3*max(data)
-    mosaic: if True, mosaic data is used. This changes the filename format of the data.
-    do_marker: if True, markers are added to the source positions
-    do_outflow: if True, outflow orientations are added to the plot
-    do_annotation: if True, source names are added to the plot
-    do_offsets: if True, the axes are displayed as offsets from the region center
 
-    Returns:
-    A PDF file with the continuum plot is saved on disk with the following name
-             'continuum_' + region + '_' + bb + '.pdf'
+    Parameters
+    ----------
+    region : str
+        Source or region name.
+    bb : str
+        Continuum baseband (``lo``, ``li``, ``ui``, or ``uo``).
+    data_directory : str
+        Directory containing the FITS input data.
+    fig_directory : str
+        Directory where the PDF is written when ``save_fig=True``.
+    save_fig : bool
+        If true, save ``continuum_<region>_<bb>.pdf`` in ``fig_directory``.
     """
     # plot continuum in color and contours, add source names, add outflow directions
     # use general plot parameters
