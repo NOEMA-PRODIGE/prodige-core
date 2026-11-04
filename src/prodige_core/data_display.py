@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import cast
+from dataclasses import dataclass
+from typing import Literal, Sequence, cast
 
 import matplotlib
 import matplotlib.patheffects as PathEffects
@@ -44,6 +45,35 @@ from .source_catalogue import (
 label_col = "black"
 label_col_back = "white"
 
+LineMapKind = Literal["moment0", "velocity"]
+
+
+@dataclass(frozen=True)
+class LinePanelSpec:
+    """Description of one source/line map in a line-panel grid."""
+
+    source: str
+    line: str
+    map_kind: LineMapKind = "moment0"
+    label: str | None = None
+    vmin: float | None = None
+    vmax: float | None = None
+
+
+@dataclass
+class PreparedLinePanel:
+    """Loaded data and WCS metadata consumed by :func:`plot_line_panel`."""
+
+    spec: LinePanelSpec
+    data: NDArray[np.float64]
+    header: Header
+    wcs: WCS
+    contour_data: NDArray[np.float64]
+    contour_wcs: WCS
+    noise: float
+    center: SkyCoord
+    systemic_velocity: float | None = None
+
 
 def determine_noise_map(data_2d: NDArray[np.float64]) -> float:
     """
@@ -54,8 +84,12 @@ def determine_noise_map(data_2d: NDArray[np.float64]) -> float:
         data_2d.dtype, np.number
     ):
         raise ValueError("Input data must be a numeric numpy array.")
+    if not np.isfinite(data_2d).any():
+        raise ValueError("Input data must contain at least one finite value.")
     # compute noise in continuum data
     _, _, noise_2dmap = sigma_clipped_stats(data_2d, sigma=3.0)
+    if not np.isfinite(noise_2dmap) or noise_2dmap <= 0.0:
+        raise ValueError("Unable to determine a positive, finite noise estimate.")
     return noise_2dmap
 
 
@@ -67,6 +101,12 @@ def get_contour_params(
     maximum: maximum value to be shown in the plot
     noise: noise in the data
     """
+    if not np.isfinite(maximum):
+        raise ValueError("maximum must be finite.")
+    if not np.isfinite(noise) or noise <= 0.0:
+        raise ValueError("noise must be positive and finite.")
+    if maximum <= 0.0:
+        return np.array([0.0], dtype=np.float64), ["solid"], False
     # compute contour levels at -5,5,10,20,40,80x... sigma
     # determines the number of contours to be plotted
     steps = int(np.log(maximum / (5.0 * noise)) // np.log(2.0)) + 1
@@ -225,6 +265,7 @@ def load_continuum_data(
 def load_line_TdV(
     datafile: str,
     region: str,
+    field_size: u.Quantity | None = None,
 ) -> tuple[NDArray[np.float64], float, Header]:
     """
     Function to load the integrated intensity map and return the cutout specified in the dictionary.
@@ -232,13 +273,14 @@ def load_line_TdV(
     Parameters:
     datafile: fileneame of the data to load
     region: name of the region
+    field_size: optional common angular field size for the cutout
 
     Returns:
     data_TdV: integrated intensity map in mJy/beam km/s or K km/s
     noise_map: estimated noise from the data
     """
     # loads the cutout of the region. It uses the region dictionary to set the cutout size.
-    hdu = load_cutout(datafile, source=region, is_hdu=False)
+    hdu = load_cutout(datafile, source=region, is_hdu=False, size=field_size)
     # set empty pixels (0.0) to NaN
     data = cast(NDArray, hdu.data)
     data = np.squeeze(data)
@@ -256,6 +298,17 @@ def load_line_TdV(
     # compute noise
     noise_map = determine_noise_map(data)
     return data, noise_map, header
+
+
+def load_line_vlsr(
+    datafile: str,
+    region: str,
+    field_size: u.Quantity | None = None,
+) -> tuple[NDArray[np.float64], Header]:
+    """Load a line-centroid velocity map and apply the requested source cutout."""
+    hdu = load_cutout(datafile, source=region, is_hdu=False, size=field_size)
+    data = cast(NDArray[np.float64], np.squeeze(hdu.data))
+    return data, cast(Header, hdu.header)
 
 
 def get_frequency(header: Header) -> float:
@@ -601,7 +654,7 @@ def pb_telecope(frequency: u.Quantity[u.Hz], telescope: str = "NOEMA") -> u.Quan
     elif telescope == "VLA":
         pb = (45.0 * u.arcmin * 1 * u.GHz / frequency).decompose()  # type: ignore
     elif telescope == "30m":
-        pb = (2460 * u.arcsec * 1 * u.Ghz / frequency).decompose()  # type: ignore
+        pb = (2460 * u.arcsec * 1 * u.GHz / frequency).decompose()  # type: ignore
     else:
         raise ValueError(
             "Telescope not supported. Please choose NOEMA, ALMA, SMA, VLA, or 30m."
@@ -820,6 +873,310 @@ def prepare_continuum_panel(
     return data_cont, header, wcs_cont, noise_cont, ra0, dec0
 
 
+def prepare_line_panel(
+    spec: LinePanelSpec,
+    data_directory: str,
+    mosaic: bool = False,
+    field_size: u.Quantity | None = None,
+) -> PreparedLinePanel:
+    """Load all data needed to render one moment-0 or velocity line panel."""
+    if spec.map_kind not in ("moment0", "velocity"):
+        raise ValueError("map_kind must be 'moment0' or 'velocity'.")
+
+    moment_file = filename_line_TdV(spec.source, spec.line, mosaic)
+    contour_data, noise, contour_header = load_line_TdV(
+        data_directory + moment_file, spec.source, field_size
+    )
+    ra0, dec0 = get_region_center(spec.source)
+    center = SkyCoord(ra=ra0, dec=dec0, unit=(u.deg, u.deg))
+
+    if spec.map_kind == "moment0":
+        data = contour_data
+        header = contour_header
+        systemic_velocity = None
+    else:
+        velocity_file = filename_line_vlsr(spec.source, spec.line, mosaic)
+        data, header = load_line_vlsr(
+            data_directory + velocity_file, spec.source, field_size
+        )
+        systemic_velocity = get_region_vlsr(spec.source)
+
+    return PreparedLinePanel(
+        spec=spec,
+        data=data,
+        header=header,
+        wcs=WCS(header),
+        contour_data=contour_data,
+        contour_wcs=WCS(contour_header),
+        noise=noise,
+        center=center,
+        systemic_velocity=systemic_velocity,
+    )
+
+
+def line_panel_limits(
+    prepared: PreparedLinePanel,
+    vmin: float | None = None,
+    vmax: float | None = None,
+) -> tuple[float, float]:
+    """Choose display limits appropriate to a moment-0 or velocity map."""
+    if prepared.spec.map_kind == "moment0":
+        return default_minmax(prepared.data, prepared.noise, vmin, vmax)
+
+    if prepared.systemic_velocity is None:
+        raise ValueError("Velocity panels require a systemic velocity.")
+    if vmin is None and vmax is None:
+        low, high = np.nanpercentile(prepared.data, [5, 95])
+        delta = max(
+            abs(low - prepared.systemic_velocity),
+            abs(high - prepared.systemic_velocity),
+        )
+        return prepared.systemic_velocity - delta, prepared.systemic_velocity + delta
+    if vmin is None:
+        vmin = float(np.nanmin(prepared.data))
+    if vmax is None:
+        vmax = float(np.nanmax(prepared.data))
+    return vmin, vmax
+
+
+def plot_line_panel(
+    prepared: PreparedLinePanel,
+    ax: Axes,
+    color_map: Colormap | str,
+    vmin: float | None = None,
+    vmax: float | None = None,
+    show_pb: bool = True,
+    do_marker: bool = False,
+    do_outflow: bool = False,
+    do_annotation: bool = True,
+    show_beam: bool = True,
+    label_col: str = "black",
+    bkgrd_col: str = "white",
+    do_offsets: bool = False,
+) -> AxesImage:
+    """Draw a prepared molecular-line panel into an existing WCS axis."""
+    vmin, vmax = line_panel_limits(prepared, vmin, vmax)
+    im = ax.imshow(
+        prepared.data,
+        origin="lower",
+        interpolation="None",
+        cmap=color_map,
+        alpha=1.0,
+        transform=ax.get_transform(prepared.wcs),
+        vmin=vmin,
+        vmax=vmax,
+    )
+    if show_pb:
+        plot_PB(
+            ax,
+            prepared.header,
+            prepared.center.ra,
+            prepared.center.dec,
+            color="white",
+            lw=1.0,
+        )
+        plot_PB(
+            ax,
+            prepared.header,
+            prepared.center.ra,
+            prepared.center.dec,
+            color="black",
+            lw=0.5,
+        )
+    plot_data_contours(
+        ax, prepared.contour_data, prepared.contour_wcs, prepared.noise
+    )
+    annotate_panel(
+        ax,
+        prepared.wcs,
+        do_marker=do_marker,
+        do_outflow=do_outflow,
+        do_annotation=do_annotation,
+    )
+    add_scalebar_and_beam(
+        ax,
+        prepared.header,
+        label_col=label_col,
+        bkgrd_col=bkgrd_col,
+        show_beam=show_beam,
+        with_stroke=True,
+    )
+    prodige_style(
+        ax,
+        do_offsets=do_offsets,
+        center_coord=prepared.center if do_offsets else None,
+    )
+    return im
+
+
+def plot_source_line_pairs(
+    panels: Sequence[LinePanelSpec],
+    data_directory: str,
+    fig_directory: str = "./",
+    fig_name: str = "source_line_pairs.pdf",
+    ncols: int = 3,
+    panel_size: tuple[float, float] = (3.0, 2.7),
+    field_size: u.Quantity = 40.0 * u.arcsec,
+    moment0_cmap: Colormap | str = cmap_mom0_default,
+    velocity_cmap: Colormap | str = cmap_vlsr_default,
+    color_nan: str = "0.1",
+    mosaic: bool = False,
+    do_marker: bool = False,
+    do_outflow: bool = False,
+    do_annotation: bool = True,
+    do_offsets: bool = True,
+    label_col: str = "black",
+    bkgrd_col: str = "white",
+    show_colorbar: bool = True,
+    shared_color_scale: bool = True,
+    save_fig: bool = True,
+) -> tuple[Figure, list[Axes]]:
+    """Plot arbitrary source/line pairs in a WCS-aware, relative-coordinate grid.
+
+    Moment-0 panels for the same molecular line share limits by default, making
+    source-to-source intensity comparisons meaningful. Velocity panels retain
+    their source-centred limits because their systemic velocities can differ.
+    """
+    if not panels:
+        raise ValueError("panels must contain at least one LinePanelSpec.")
+    if isinstance(ncols, bool) or not isinstance(ncols, int) or ncols <= 0:
+        raise ValueError("ncols must be a positive integer.")
+
+    plt.rcParams.update(pyplot_params)
+    prepared_panels = [
+        prepare_line_panel(spec, data_directory, mosaic, field_size) for spec in panels
+    ]
+    moment0_limits: dict[str, tuple[float, float]] = {}
+    if shared_color_scale:
+        for prepared in prepared_panels:
+            if prepared.spec.map_kind != "moment0":
+                continue
+            panel_vmin, panel_vmax = line_panel_limits(prepared)
+            current = moment0_limits.get(prepared.spec.line)
+            if current is None:
+                moment0_limits[prepared.spec.line] = (panel_vmin, panel_vmax)
+            else:
+                moment0_limits[prepared.spec.line] = (
+                    min(current[0], panel_vmin),
+                    max(current[1], panel_vmax),
+                )
+    nrows = int(np.ceil(len(prepared_panels) / ncols))
+    panel_width, panel_height = panel_size
+    fig = plt.figure(figsize=(panel_width * ncols + 1, panel_height * nrows + 1))
+    gs = fig.add_gridspec(nrows, ncols, hspace=0.0, wspace=0.0)
+
+    axs: list[Axes] = []
+    for index, prepared in enumerate(prepared_panels):
+        row, col = divmod(index, ncols)
+        ax: Axes = fig.add_subplot(gs[row, col], projection=prepared.wcs)
+        axs.append(ax)
+        cmap = moment0_cmap if prepared.spec.map_kind == "moment0" else velocity_cmap
+        shared_limits = moment0_limits.get(prepared.spec.line)
+        panel_vmin = prepared.spec.vmin
+        panel_vmax = prepared.spec.vmax
+        if shared_limits is not None:
+            if panel_vmin is None:
+                panel_vmin = shared_limits[0]
+            if panel_vmax is None:
+                panel_vmax = shared_limits[1]
+        im = plot_line_panel(
+            prepared,
+            ax,
+            prepare_color_map(cmap, color_nan),
+            vmin=panel_vmin,
+            vmax=panel_vmax,
+            show_pb=not mosaic,
+            do_marker=do_marker,
+            do_outflow=do_outflow,
+            do_annotation=do_annotation,
+            label_col=label_col,
+            bkgrd_col=bkgrd_col,
+            do_offsets=do_offsets,
+        )
+        hide_axis_labels(ax, hide_x=row < nrows - 1, hide_y=col > 0)
+
+        label = prepared.spec.label or f"{prepared.spec.source}: {prepared.spec.line}"
+        label_text = ax.text(
+            0.05,
+            0.95,
+            label,
+            transform=ax.transAxes,
+            color=label_col,
+            verticalalignment="top",
+        )
+        label_text.set_path_effects(
+            [PathEffects.withStroke(linewidth=1.0, foreground=bkgrd_col)]
+        )
+        if show_colorbar:
+            unit = str(prepared.header.get("BUNIT", ""))
+            add_side_colorbar(fig, ax, im, label=unit or None, label_fontsize=8)
+
+    fig.tight_layout()
+    if save_fig:
+        fig.savefig(
+            fig_directory + fig_name,
+            format="pdf",
+            bbox_inches="tight",
+            pad_inches=0.01,
+        )
+        plt.close(fig)
+    return fig, axs
+
+
+def plot_lines_for_source(
+    source: str,
+    lines: Sequence[str],
+    data_directory: str,
+    map_kind: LineMapKind = "moment0",
+    **kwargs: object,
+) -> tuple[Figure, list[Axes]]:
+    """Plot multiple molecular lines for one source."""
+    return plot_source_line_pairs(
+        [LinePanelSpec(source, line, map_kind) for line in lines],
+        data_directory,
+        **kwargs,
+    )
+
+
+def plot_sources_for_line(
+    sources: Sequence[str],
+    line: str,
+    data_directory: str,
+    map_kind: LineMapKind = "moment0",
+    **kwargs: object,
+) -> tuple[Figure, list[Axes]]:
+    """Plot one molecular line for multiple sources."""
+    return plot_source_line_pairs(
+        [LinePanelSpec(source, line, map_kind) for source in sources],
+        data_directory,
+        **kwargs,
+    )
+
+
+def plot_source_line_grid(
+    sources: Sequence[str],
+    lines: Sequence[str],
+    data_directory: str,
+    map_kind: LineMapKind = "moment0",
+    **kwargs: object,
+) -> tuple[Figure, list[Axes]]:
+    """Plot a source-by-line matrix with sources as rows and lines as columns."""
+    if not lines:
+        raise ValueError("lines must contain at least one molecular line.")
+    if "ncols" in kwargs:
+        raise ValueError("ncols is determined by the number of lines in this matrix.")
+    return plot_source_line_pairs(
+        [
+            LinePanelSpec(source, line, map_kind)
+            for source in sources
+            for line in lines
+        ],
+        data_directory,
+        ncols=len(lines),
+        **kwargs,
+    )
+
+
 def plot_continuum_grid(
     panels: list[tuple[str, str]],
     data_directory: str,
@@ -869,6 +1226,13 @@ def plot_continuum_grid(
     Returns:
     fig, axs: the created figure and the list of axes (one per panel)
     """
+    if not panels:
+        raise ValueError("panels must contain at least one (region, bb) pair.")
+    if isinstance(ncols, bool) or not isinstance(ncols, int) or ncols <= 0:
+        raise ValueError("ncols must be a positive integer.")
+    if labels is not None and len(labels) != len(panels):
+        raise ValueError("labels must contain exactly one item per panel.")
+
     plt.rcParams.update(pyplot_params)
     color_map = prepare_color_map(cmap, color_nan)
 
@@ -967,24 +1331,19 @@ def plot_continuum(
     """
     Function to plot the continuum data with the sources and outflow orientations.
     Labels and annotations are added to the plot.
-    Parameters:
-    region: name of the region
-    bb: baseband of the data (lo, li, ui, uo)
-    data_directory: directory where the data is stored
-    fig_directory: directory where the figure will be stored
-    cmap: colormap for the plot (default is the one listed in config.py)
-    color_nan: color for NaN values
-    vmin: minimum value for the color scale. If None, it is set to -5*noise
-    vmax: maximum value for the color scale. If None, it is set to 0.3*max(data)
-    mosaic: if True, mosaic data is used. This changes the filename format of the data.
-    do_marker: if True, markers are added to the source positions
-    do_outflow: if True, outflow orientations are added to the plot
-    do_annotation: if True, source names are added to the plot
-    do_offsets: if True, the axes are displayed as offsets from the region center
 
-    Returns:
-    A PDF file with the continuum plot is saved on disk with the following name
-             'continuum_' + region + '_' + bb + '.pdf'
+    Parameters
+    ----------
+    region : str
+        Source or region name.
+    bb : str
+        Continuum baseband (``lo``, ``li``, ``ui``, or ``uo``).
+    data_directory : str
+        Directory containing the FITS input data.
+    fig_directory : str
+        Directory where the PDF is written when ``save_fig=True``.
+    save_fig : bool
+        If true, save ``continuum_<region>_<bb>.pdf`` in ``fig_directory``.
     """
     # plot continuum in color and contours, add source names, add outflow directions
     # use general plot parameters

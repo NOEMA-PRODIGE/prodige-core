@@ -24,8 +24,8 @@ def fits_files(tmp_path):
         hdu.header["CRPIX1"] = 20
         hdu.header["CRPIX2"] = 20
         hdu.header["CRPIX3"] = 5
-        hdu.header["CRVAL1"] = 0.0
-        hdu.header["CRVAL2"] = 0.0
+        hdu.header["CRVAL1"] = 1.0
+        hdu.header["CRVAL2"] = -1.0
         hdu.header["CRVAL3"] = 0.0
         hdu.header["CDELT1"] = -0.01 * (1 + i * 0.1)
         hdu.header["CDELT2"] = 0.01 * (1 + i * 0.1)
@@ -75,7 +75,7 @@ def test_common_beam_files_nonexistent_file(fits_files):
 @pytest.fixture
 def template_file(tmp_path):
     # Create a temporary template FITS file for testing
-    data = np.random.random((10, 40, 40))
+    data = np.random.random((10, 30, 50))
     hdu = fits.PrimaryHDU(data)
     hdu.header["CTYPE1"] = "RA---TAN"
     hdu.header["CTYPE2"] = "DEC--TAN"
@@ -83,38 +83,34 @@ def template_file(tmp_path):
     hdu.header["CUNIT1"] = "deg"
     hdu.header["CUNIT2"] = "deg"
     hdu.header["CUNIT3"] = "km/s"
-    hdu.header["CRPIX1"] = 20
-    hdu.header["CRPIX2"] = 20
+    hdu.header["CRPIX1"] = 25
+    hdu.header["CRPIX2"] = 15
     hdu.header["CRPIX3"] = 5
-    hdu.header["CRVAL1"] = 0.0
-    hdu.header["CRVAL2"] = 0.0
+    hdu.header["CRVAL1"] = 1.0
+    hdu.header["CRVAL2"] = -1.0
     hdu.header["CRVAL3"] = 0.0
-    hdu.header["CDELT1"] = -0.01
-    hdu.header["CDELT2"] = 0.01
+    hdu.header["CDELT1"] = -0.02
+    hdu.header["CDELT2"] = 0.02
     hdu.header["CDELT3"] = 0.1
-    hdu.header["NAXIS1"] = 40
-    hdu.header["NAXIS2"] = 40
+    hdu.header["NAXIS1"] = 50
+    hdu.header["NAXIS2"] = 30
     filename = tmp_path / "template.fits"
     hdu.writeto(filename)
     return str(filename)
 
 
 def test_regrid_cubes_from_files(fits_files, template_file):
-    prodige_core.data_handler.regrid_cubes_from_files(fits_files, fits_files[-1])
+    prodige_core.data_handler.regrid_cubes_from_files(fits_files, template_file)
+    template_header = fits.getheader(template_file)
     for f in fits_files:
         regridded_file = f.replace(".fits", "_regrid.fits")
         assert os.path.exists(regridded_file)
 
-        original_cube = SpectralCube.read(f)
         regridded_cube = SpectralCube.read(regridded_file)
 
-        assert regridded_cube.shape == original_cube.shape
-        assert (
-            regridded_cube.header["CRVAL1"] == fits.getheader(template_file)["CRVAL1"]
-        )
-        assert (
-            regridded_cube.header["CRVAL2"] == fits.getheader(template_file)["CRVAL2"]
-        )
+        assert regridded_cube.shape == (10, 30, 50)
+        for key in ("CRVAL1", "CRVAL2", "CDELT1", "CDELT2", "CRPIX1", "CRPIX2"):
+            assert regridded_cube.header[key] == template_header[key]
 
 
 def test_regrid_cubes_from_files_invalid_extension(fits_files, template_file):

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from unittest.mock import patch
 
 import matplotlib
 import numpy as np
@@ -9,7 +10,8 @@ import pytest
 from astropy import units as u
 from astropy.io.fits import Header
 from astropy.utils.exceptions import AstropyUserWarning
-from matplotlib.testing.decorators import image_comparison
+from matplotlib import ft2font
+from matplotlib.figure import Figure
 
 import prodige_core.data_display
 
@@ -22,6 +24,16 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 plt.ion()
+
+IMAGE_COMPARISON_DPI = 150
+IMAGE_COMPARISON_MATPLOTLIB = "3.11.2"
+IMAGE_COMPARISON_FREETYPE = "2.14.3"
+
+
+def test_image_comparison_rendering_versions() -> None:
+    """Keep the PNG baselines tied to one deterministic rendering stack."""
+    assert matplotlib.__version__ == IMAGE_COMPARISON_MATPLOTLIB
+    assert ft2font.__freetype_version__ == IMAGE_COMPARISON_FREETYPE
 
 
 def test_pb_telecope_good_frequency() -> None:
@@ -41,11 +53,17 @@ def test_pb_telecope_good_frequency() -> None:
         prodige_core.data_display.pb_telecope(300 * u.GHz, telescope="ALMA")  # type: ignore
         == 19.0 * u.arcsec  # type: ignore
     )
+    assert (
+        prodige_core.data_display.pb_telecope(1 * u.GHz, telescope="30m")  # type: ignore
+        == 2460.0 * u.arcsec  # type: ignore
+    )
     with pytest.raises(ValueError):
         prodige_core.data_display.pb_telecope(
             72.78382 * u.GHz,
             telescope="TEST",  # type: ignore
         )
+    with pytest.raises(u.UnitsError):
+        prodige_core.data_display.pb_telecope(1 * u.m, telescope="30m")  # type: ignore
 
 
 def test_validate_frequency() -> None:
@@ -64,6 +82,22 @@ def test_get_contour_params() -> None:
     assert (steps_arr == [-5.0, 5.0, 10.0, 20.0, 40.0]).all()
     assert line_style == ["dotted"] + ["solid"] * 4
     assert do_contours
+
+
+@pytest.mark.parametrize(
+    ("maximum", "noise"),
+    [(np.nan, 1.0), (1.0, 0.0), (1.0, np.nan), (1.0, np.inf)],
+)
+def test_get_contour_params_invalid_inputs(maximum: float, noise: float) -> None:
+    with pytest.raises(ValueError):
+        prodige_core.data_display.get_contour_params(maximum, noise)
+
+
+def test_get_contour_params_zero_maximum() -> None:
+    levels, styles, do_contours = prodige_core.data_display.get_contour_params(0.0, 1.0)
+    assert (levels == [0.0]).all()
+    assert styles == ["solid"]
+    assert not do_contours
 
 
 def test_get_frequency(sample_image: SampleImageFactory) -> None:
@@ -103,6 +137,104 @@ def test_noise_map() -> None:
             )
             == rms
         )
+
+
+@pytest.mark.parametrize("data", [np.zeros((4, 4)), np.full((4, 4), np.nan)])
+def test_determine_noise_map_degenerate_data(data: np.ndarray) -> None:
+    with pytest.raises(ValueError):
+        prodige_core.data_display.determine_noise_map(data)
+
+
+@pytest.mark.parametrize(
+    ("panels", "ncols", "labels", "message"),
+    [
+        ([], 1, None, "panels must contain"),
+        ([("B1-bS", "lo")], 0, None, "ncols must be"),
+        ([("B1-bS", "lo")], 1, [], "labels must contain"),
+    ],
+)
+def test_plot_continuum_grid_validates_inputs(
+    panels: list[tuple[str, str]],
+    ncols: int,
+    labels: list[str] | None,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        prodige_core.data_display.plot_continuum_grid(
+            panels, data_directory="", ncols=ncols, labels=labels, save_fig=False
+        )
+
+
+def test_line_grid_wrappers_build_expected_panels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[
+        tuple[list[prodige_core.data_display.LinePanelSpec], dict[str, object]]
+    ] = []
+
+    def fake_plot_pairs(
+        panels: list[prodige_core.data_display.LinePanelSpec],
+        data_directory: str,
+        **kwargs: object,
+    ) -> tuple[None, list[object]]:
+        assert data_directory == "data/"
+        calls.append((panels, kwargs))
+        return None, []
+
+    monkeypatch.setattr(
+        prodige_core.data_display, "plot_source_line_pairs", fake_plot_pairs
+    )
+    prodige_core.data_display.plot_lines_for_source(
+        "B1-bS", ["DCO+_3-2", "H2CO_l21"], "data/", map_kind="velocity"
+    )
+    prodige_core.data_display.plot_sources_for_line(
+        ["B1-bS", "L1448N"], "DCO+_3-2", "data/"
+    )
+    prodige_core.data_display.plot_source_line_grid(
+        ["B1-bS", "L1448N"], ["DCO+_3-2", "H2CO_l21"], "data/"
+    )
+
+    assert [spec.map_kind for spec in calls[0][0]] == ["velocity", "velocity"]
+    assert [spec.source for spec in calls[1][0]] == ["B1-bS", "L1448N"]
+    assert [(spec.source, spec.line) for spec in calls[2][0]] == [
+        ("B1-bS", "DCO+_3-2"),
+        ("B1-bS", "H2CO_l21"),
+        ("L1448N", "DCO+_3-2"),
+        ("L1448N", "H2CO_l21"),
+    ]
+    assert calls[2][1]["ncols"] == 2
+
+
+def test_plot_source_line_pairs_moment0_and_velocity(
+    tmp_path: Path, sample_image_line: SampleImageFactoryVel
+) -> None:
+    moment_file = tmp_path / prodige_core.data_display.filename_line_TdV(
+        "B1-bS", "DCO+_3-2"
+    )
+    velocity_file = tmp_path / prodige_core.data_display.filename_line_vlsr(
+        "B1-bS", "DCO+_3-2"
+    )
+    moment_hdu = sample_image_line(is_vlsr=False)
+    moment_hdu.writeto(moment_file)
+    velocity_hdu = sample_image_line(is_vlsr=True)
+    velocity_hdu.writeto(velocity_file)
+
+    fig, axs = prodige_core.data_display.plot_source_line_pairs(
+        [
+            prodige_core.data_display.LinePanelSpec("B1-bS", "DCO+_3-2"),
+            prodige_core.data_display.LinePanelSpec(
+                "B1-bS", "DCO+_3-2", map_kind="velocity"
+            ),
+        ],
+        os.fspath(tmp_path) + "/",
+        ncols=2,
+        do_annotation=False,
+        show_colorbar=False,
+        save_fig=False,
+    )
+    assert len(axs) == 2
+    assert fig.axes == axs
+    plt.close(fig)
 
 
 def test_filename_continuum() -> None:
@@ -197,7 +329,7 @@ def _plot_continuum_helper(
     vmax: float | None,
     do_annotation: bool,
     do_offsets: bool,
-):
+) -> Figure:
     """Helper function for continuum plotting tests."""
     dir = tmp_path
     dir.mkdir(exist_ok=True)
@@ -214,43 +346,47 @@ def _plot_continuum_helper(
     hdu.data = data
     hdu.writeto(file_link, overwrite=True)
 
-    prodige_core.data_display.plot_continuum(
-        "B1-bS",
-        "li",
-        os.fspath(dir) + "/",
-        mosaic=False,
-        vmin=vmin,
-        vmax=vmax,
-        save_fig=False,
-        do_marker=True,
-        do_annotation=do_annotation,
-        do_offsets=do_offsets,
-        do_outflow=True,
-    )
+    with patch.dict(prodige_core.data_display.pyplot_params, {"text.usetex": False}):
+        prodige_core.data_display.plot_continuum(
+            "B1-bS",
+            "li",
+            os.fspath(dir) + "/",
+            mosaic=False,
+            vmin=vmin,
+            vmax=vmax,
+            save_fig=False,
+            do_marker=True,
+            do_annotation=do_annotation,
+            do_offsets=do_offsets,
+            do_outflow=True,
+        )
+    return plt.gcf()
 
 
-@image_comparison(
-    baseline_images=["example_map"],
+@pytest.mark.mpl_image_compare(
+    baseline_dir="baseline_images/test_data_display",
+    style={"text.usetex": False},
+    filename="example_map.png",
+    tolerance=10,
     remove_text=True,
-    extensions=["png"],
-    style="mpl20",
-    tol=10,
+    savefig_kwargs={"dpi": IMAGE_COMPARISON_DPI},
 )
-def test_plot_continuum(tmp_path: Path, sample_image: SampleImageFactory) -> None:
-    _plot_continuum_helper(tmp_path, sample_image, -0.5, 2.0, True, False)
+def test_plot_continuum(tmp_path: Path, sample_image: SampleImageFactory) -> Figure:
+    return _plot_continuum_helper(tmp_path, sample_image, -0.5, 2.0, True, False)
 
 
-@image_comparison(
-    baseline_images=["example_map_offset"],
+@pytest.mark.mpl_image_compare(
+    baseline_dir="baseline_images/test_data_display",
+    style={"text.usetex": False},
+    filename="example_map_offset.png",
+    tolerance=10,
     remove_text=True,
-    extensions=["png"],
-    style="mpl20",
-    tol=10,
+    savefig_kwargs={"dpi": IMAGE_COMPARISON_DPI},
 )
 def test_plot_continuum_offset(
     tmp_path: Path, sample_image: SampleImageFactory
-) -> None:
-    _plot_continuum_helper(tmp_path, sample_image, None, None, False, True)
+) -> Figure:
+    return _plot_continuum_helper(tmp_path, sample_image, None, None, False, True)
 
 
 def _plot_line_mom0_helper(
@@ -260,7 +396,7 @@ def _plot_line_mom0_helper(
     vmax: float | None,
     do_annotation: bool,
     do_offsets: bool,
-):
+) -> Figure:
     """Helper function for line moment 0 plotting tests."""
     dir = tmp_path
     dir.mkdir(exist_ok=True)
@@ -278,46 +414,50 @@ def _plot_line_mom0_helper(
     hdu.header["BUNIT"] = "mJy/beam km/s"
     hdu.writeto(file_link, overwrite=True)
 
-    prodige_core.data_display.plot_line_mom0(
-        "B1-bS",
-        "DCO+_3-2",
-        "li",
-        os.fspath(dir) + "/",
-        mosaic=False,
-        vmin=vmin,
-        vmax=vmax,
-        save_fig=False,
-        do_marker=True,
-        do_annotation=do_annotation,
-        do_offsets=do_offsets,
-        do_outflow=True,
-    )
+    with patch.dict(prodige_core.data_display.pyplot_params, {"text.usetex": False}):
+        prodige_core.data_display.plot_line_mom0(
+            "B1-bS",
+            "DCO+_3-2",
+            "li",
+            os.fspath(dir) + "/",
+            mosaic=False,
+            vmin=vmin,
+            vmax=vmax,
+            save_fig=False,
+            do_marker=True,
+            do_annotation=do_annotation,
+            do_offsets=do_offsets,
+            do_outflow=True,
+        )
+    return plt.gcf()
 
 
-@image_comparison(
-    baseline_images=["example_line_mom0"],
+@pytest.mark.mpl_image_compare(
+    baseline_dir="baseline_images/test_data_display",
+    filename="example_line_mom0.png",
+    style={"text.usetex": False},
+    tolerance=10,
     remove_text=True,
-    extensions=["png"],
-    style="mpl20",
-    tol=10,
+    savefig_kwargs={"dpi": IMAGE_COMPARISON_DPI},
 )
 def test_plot_line_mom0(
     tmp_path: Path, sample_image_line: SampleImageFactoryVel
-) -> None:
-    _plot_line_mom0_helper(tmp_path, sample_image_line, -0.3, 1.3, True, False)
+) -> Figure:
+    return _plot_line_mom0_helper(tmp_path, sample_image_line, -0.3, 1.3, True, False)
 
 
-@image_comparison(
-    baseline_images=["example_line_mom0_offset"],
+@pytest.mark.mpl_image_compare(
+    baseline_dir="baseline_images/test_data_display",
+    filename="example_line_mom0_offset.png",
+    style={"text.usetex": False},
+    tolerance=10,
     remove_text=True,
-    extensions=["png"],
-    style="mpl20",
-    tol=10,
+    savefig_kwargs={"dpi": IMAGE_COMPARISON_DPI},
 )
 def test_plot_line_mom0_offset(
     tmp_path: Path, sample_image_line: SampleImageFactoryVel
-) -> None:
-    _plot_line_mom0_helper(tmp_path, sample_image_line, None, None, False, True)
+) -> Figure:
+    return _plot_line_mom0_helper(tmp_path, sample_image_line, None, None, False, True)
 
 
 def _plot_line_vlsr_helper(
@@ -327,7 +467,7 @@ def _plot_line_vlsr_helper(
     vmax: float | None,
     do_annotation: bool,
     do_offsets: bool,
-):
+) -> Figure:
     """Helper function for line moment 0 plotting tests."""
     dir = tmp_path
     dir.mkdir(exist_ok=True)
@@ -351,43 +491,45 @@ def _plot_line_vlsr_helper(
     hdu.data = data
     hdu.writeto(file_link_TdV, overwrite=True)
 
-    prodige_core.data_display.plot_line_vlsr(
-        "B1-bS",
-        "DCO+_3-2",
-        os.fspath(dir) + "/",
-        color_nan="0.9",
-        mosaic=False,
-        vmin=vmin,
-        vmax=vmax,
-        save_fig=False,
-        do_marker=True,
-        do_annotation=do_annotation,
-        do_offsets=do_offsets,
-        do_outflow=True,
-    )
+    with patch.dict(prodige_core.data_display.pyplot_params, {"text.usetex": False}):
+        prodige_core.data_display.plot_line_vlsr(
+            "B1-bS",
+            "DCO+_3-2",
+            os.fspath(dir) + "/",
+            color_nan="0.9",
+            mosaic=False,
+            vmin=vmin,
+            vmax=vmax,
+            save_fig=False,
+            do_marker=True,
+            do_annotation=do_annotation,
+            do_offsets=do_offsets,
+            do_outflow=True,
+        )
+    return plt.gcf()
 
 
-@image_comparison(
-    baseline_images=["example_line_velocity"],
+@pytest.mark.mpl_image_compare(
+    baseline_dir="baseline_images/test_data_display",
+    filename="example_line_velocity.png",
+    tolerance=10,
     remove_text=True,
-    extensions=["png"],
-    style="mpl20",
-    tol=10,
+    savefig_kwargs={"dpi": IMAGE_COMPARISON_DPI},
 )
 def test_plot_line_vlsr(
     tmp_path: Path, sample_image_line: SampleImageFactoryVel
-) -> None:
-    _plot_line_vlsr_helper(tmp_path, sample_image_line, 5.75, 7.75, True, False)
+) -> Figure:
+    return _plot_line_vlsr_helper(tmp_path, sample_image_line, 5.75, 7.75, True, False)
 
 
-@image_comparison(
-    baseline_images=["example_line_velocity_offset"],
+@pytest.mark.mpl_image_compare(
+    baseline_dir="baseline_images/test_data_display",
+    filename="example_line_velocity_offset.png",
+    tolerance=10,
     remove_text=True,
-    extensions=["png"],
-    style="mpl20",
-    tol=10,
+    savefig_kwargs={"dpi": IMAGE_COMPARISON_DPI},
 )
 def test_plot_line_vlsr_offset(
     tmp_path: Path, sample_image_line: SampleImageFactoryVel
-) -> None:
-    _plot_line_vlsr_helper(tmp_path, sample_image_line, None, None, False, True)
+) -> Figure:
+    return _plot_line_vlsr_helper(tmp_path, sample_image_line, None, None, False, True)

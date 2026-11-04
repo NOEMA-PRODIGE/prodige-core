@@ -25,7 +25,13 @@ git clone https://github.com/NOEMA-PRODIGE/prodige-core.git
 
 Install the package from the cloned repository with:
 ```bash
-python -m pip install .
+python -m pip install -e .
+```
+
+For development and testing, install the test dependencies as well:
+
+```bash
+python -m pip install -e ".[test]"
 ```
 
 
@@ -43,8 +49,14 @@ This is developed by:
 
 ---
 
+- Python >=3.11
+- scipy (>=1.10)
 - astropy (>=5.0)
-- spectral-cube (>=0.5.0)
-- radio-beam (>=0.3)
 - matplotlib (>=3.6)
+- radio-beam (>=0.3)
+- spectral-cube (>=0.5.0)
 - reproject
+
+The plotting helpers expect FITS images and use the source metadata shipped with
+the package. Data paths should include a trailing path separator because the
+current API accepts directory strings.

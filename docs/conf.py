@@ -24,7 +24,6 @@ author = 'Jaime E. Pineda'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 extensions = ['myst_parser',
-              'sphinx.ext.autosectionlabel',
               'sphinx.ext.autodoc']
 source_suffix = {
     '.rst': 'restructuredtext',
@@ -40,4 +39,5 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'requirements.txt']
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'alabaster'
-html_static_path = ['_static']
+# Keep this unset until a project-specific static asset directory is added.
+# html_static_path = ['_static']

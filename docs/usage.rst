@@ -65,6 +65,10 @@ known outflows directions, primary beam sizes, and other information.
 In addition, we have also created a couple of wrapper functions to 
 create publications ready figures with a single command.
 
+The plotting functions use directory strings when locating FITS files. Include
+the trailing ``/`` (or the platform-specific path separator) in
+``data_directory``.
+
 Single-pointing Continuum
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 The function ``plot_continuum`` will create a figure with the continuum map 
@@ -86,7 +90,7 @@ with the name of the source and the baseband.
     bb = 'lo'
     print('>>>>> ' + region + ' continuum of single pointing')
     pcore.plot_continuum(region, bb, data_directory, cmap='inferno', mosaic=False,
-                        color_nan='0.9', do_marker=True, do_outflow=True,)
+                         color_nan='0.9', do_marker=True, do_outflow=True,)
 
 .. figure:: continuum_B5-IRS1_lo.png
     :width: 400 px
@@ -117,7 +121,7 @@ with the name of the source and the baseband.
     bb = 'li'
     print('>>>>> ' + region + ' continuum of Mosaic')
     pcore.plot_continuum(region, bb, data_directory, cmap='inferno', mosaic=True,
-                        color_nan='0.9', do_marker=True, do_outflow=True,)
+                         color_nan='0.9', do_marker=True, do_outflow=True,)
 
 .. figure:: continuum_L1448N_li.png
     :width: 400 px
@@ -152,7 +156,7 @@ with the name of the source and the baseband.
     bb = 'li'
     print('>>>>> ' + region + ' Integrated Intensity')
     pcore.plot_line_mom0(region, linename, bb, data_directory, mosaic=False,
-                        color_nan='0.9', do_marker=True, do_outflow=True,)
+                         color_nan='0.9', do_marker=True, do_outflow=True,)
 
 
 .. figure:: HH211_N2Dp_K_TdV.png
@@ -191,7 +195,7 @@ with the name of the source and the baseband.
     bb = 'li'
     print('>>>>> ' + region + ' Velocity map')
     pcore.plot_line_vlsr(region, linename, data_directory, mosaic=False,
-                     color_nan='0.9', do_marker=True, do_outflow=True, do_offsets=True)
+                         color_nan='0.9', do_marker=True, do_outflow=True, do_offsets=True)
 
 
 .. figure:: HH211_N2Dp_K_Vlsr.png
@@ -201,3 +205,34 @@ with the name of the source and the baseband.
 
     Example of a centroid velocity map of HH211 with the outflow direction 
     and the primary beam size.
+
+
+Line and continuum grids
+------------------------
+
+The current API also provides grid helpers for comparing several panels in a
+single figure. Each returns ``(fig, axes)`` and accepts the same display
+options as the lower-level panel functions.
+
+.. code:: python
+
+    import prodige_core as pcore
+
+    fig, axes = pcore.plot_source_line_grid(
+        sources=['B1-bS', 'L1448N'],
+        lines=['DCO+_3-2', 'H2CO_l21'],
+        data_directory=data_directory,
+        map_kind='moment0',
+        save_fig=False,
+    )
+
+    fig, axes = pcore.plot_continuum_grid(
+        panels=[('B1-bS', 'lo'), ('L1448N', 'li')],
+        data_directory=data_directory,
+        ncols=2,
+        save_fig=False,
+    )
+
+For the common one-dimensional cases, use ``plot_lines_for_source`` to compare
+multiple lines for one source, or ``plot_sources_for_line`` to compare one line
+across several sources. ``map_kind`` can be ``'moment0'`` or ``'velocity'``.

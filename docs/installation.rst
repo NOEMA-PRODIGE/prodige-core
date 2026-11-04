@@ -6,10 +6,13 @@ Requirements
 This package has the following dependencies:
 
 * astropy (5.0 or later)
+* scipy (1.10 or later)
 * spectral-cube (0.5 or later)
 * radio-beam (0.3 or later)
 * matplotlib (3.6 or later)
 * reproject
+
+The package requires Python 3.11 or later.
 
 Installation
 ------------
@@ -26,5 +29,9 @@ can do so from the git repository::
 
     git clone https://github.com/NOEMA-PRODIGE/prodige-core.git
     cd prodige-core
-    pip install .
+    python -m pip install -e .
+
+To install the development and test dependencies, use::
+
+    python -m pip install -e ".[test]"
 

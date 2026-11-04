@@ -15,6 +15,7 @@ This includes:
 
      installation
      usage
+     api
 
 Indices and tables
 ==================

@@ -9,6 +9,7 @@ from contextlib import (
 )
 from typing import Any
 
+import numpy as np
 import pytest
 from astropy.io import fits
 
@@ -47,7 +48,7 @@ def test_get_region_names() -> None:
     assert len(source_name) == len(list(region_dic))
 
 
-def test_load_cutout(sample_image: SampleImageFactory) -> None:
+def test_load_cutout(tmp_path, sample_image: SampleImageFactory) -> None:
     with pytest.raises(ValueError):
         prodige_core.source_catalogue.load_cutout(
             "test.fits", is_hdu=False, source="test"
@@ -76,6 +77,43 @@ def test_load_cutout(sample_image: SampleImageFactory) -> None:
         hdu_2d_new.header["CRVAL2"] == pytest.approx(dec0.value)
     )
     assert (hdu_2d_new.header) == (hdu_new_3d.header)
+    assert hdu_new_3d.data.shape == (200, 200)
+
+    file_path = tmp_path / "input.fits"
+    hdu_2d.writeto(file_path)
+    file_cutout = prodige_core.source_catalogue.load_cutout(
+        str(file_path), source="B1-bS"
+    )
+    assert file_cutout.data.shape == (200, 200)
+    # The source file may be removed after loading: the returned HDU owns its data.
+    file_path.unlink()
+    assert file_cutout.data.shape == (200, 200)
+
+
+def test_load_cutout_rejects_ambiguous_cube_and_axis_order(
+    sample_image: SampleImageFactory,
+) -> None:
+    multi_plane = sample_image(is_2d=False)
+    multi_plane.data = np.ones((2, 501, 501))
+    with pytest.raises(ValueError, match="exactly one plane"):
+        prodige_core.source_catalogue.load_cutout(
+            multi_plane, source="B1-bS", is_hdu=True
+        )
+
+    nonstandard_axes = sample_image(is_2d=False)
+    nonstandard_axes.header["CTYPE1"] = "FREQ"
+    nonstandard_axes.header["CUNIT1"] = "Hz"
+    nonstandard_axes.header["CTYPE2"] = "RA---TAN"
+    nonstandard_axes.header["CTYPE3"] = "DEC--TAN"
+    nonstandard_axes.header["CUNIT2"] = "deg"
+    nonstandard_axes.header["CUNIT3"] = "deg"
+    nonstandard_axes.header["CRVAL1"] = 72.78382e9
+    nonstandard_axes.header["CRVAL2"] = 0.0
+    nonstandard_axes.header["CRVAL3"] = 0.0
+    with pytest.raises(ValueError, match="nonstandard axis ordering"):
+        prodige_core.source_catalogue.load_cutout(
+            nonstandard_axes, source="B1-bS", is_hdu=True
+        )
 
 
 def test_get_region_center() -> None:
