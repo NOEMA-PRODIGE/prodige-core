@@ -295,7 +295,11 @@ region_dic: dict[str, Region] = {
 
 
 def load_cutout(
-    file_in: str | PrimaryHDU, source: str = "L1448N", is_hdu: bool = False
+    file_in: str | PrimaryHDU,
+    source: str = "L1448N",
+    is_hdu: bool = False,
+    center: SkyCoord | None = None,
+    size: u.Quantity | None = None,
 ) -> PrimaryHDU:
     """
     Convenience function to load a FITS file, or an existing HDU,
@@ -309,6 +313,10 @@ def load_cutout(
              define the center of the cutout. This will be loaded from the
              region dictionary.
     is_hdu : Boolean parameter. It controls what is passed to the function.
+    center : Optional sky coordinate for the cutout center. When omitted, the
+             catalogue center for ``source`` is used.
+    size : Optional angular size for the cutout. When omitted, the catalogue
+           height and width for ``source`` are used.
 
     Return:
     It returns the HDU of the cutout defined by the global variables: position and cutout_size.
@@ -318,14 +326,21 @@ def load_cutout(
     other axis orderings are rejected because this function has no plane-selection
     argument and always returns a 2-D cutout.
     """
-    validate_source_id(source)
-    position = SkyCoord(
-        region_dic[source]["RA0"] + " " + region_dic[source]["Dec0"],
-        unit=(u.hourangle, u.deg),  # type: ignore
-    )
-    cutout_size = u.Quantity(
-        (region_dic[source]["height"], region_dic[source]["width"])
-    )
+    if center is None or size is None:
+        validate_source_id(source)
+    if center is None:
+        position = SkyCoord(
+            region_dic[source]["RA0"] + " " + region_dic[source]["Dec0"],
+            unit=(u.hourangle, u.deg),  # type: ignore
+        )
+    else:
+        position = center
+    if size is None:
+        cutout_size = u.Quantity(
+            (region_dic[source]["height"], region_dic[source]["width"])
+        )
+    else:
+        cutout_size = size
     hdu: PrimaryHDU
     if not is_hdu:
         with fits.open(file_in) as hdulist:

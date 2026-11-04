@@ -24,8 +24,8 @@ def fits_files(tmp_path):
         hdu.header["CRPIX1"] = 20
         hdu.header["CRPIX2"] = 20
         hdu.header["CRPIX3"] = 5
-        hdu.header["CRVAL1"] = 0.0
-        hdu.header["CRVAL2"] = 0.0
+        hdu.header["CRVAL1"] = 1.0
+        hdu.header["CRVAL2"] = -1.0
         hdu.header["CRVAL3"] = 0.0
         hdu.header["CDELT1"] = -0.01 * (1 + i * 0.1)
         hdu.header["CDELT2"] = 0.01 * (1 + i * 0.1)
